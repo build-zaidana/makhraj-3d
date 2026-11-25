@@ -1,8 +1,13 @@
-# Makhraj 3D — Visualisasi Anatomi X-Ray Makharijul Huruf (FP Grafika Komputer)
+# Makhraj 3D — Visualisasi Anatomi X-Ray Makharijul Huruf
 
-Aplikasi web 3D interaktif berbasis **Three.js + WebGL2** untuk membantu murid memahami dan melafalkan **29 huruf Hijaiyah (Makharijul Huruf)** secara tepat dengan visualisasi anatomi 3D open-source (*BodyParts3D / OrganUI*), **X-Ray Fresnel Vision**, studio PBR lighting, dan selective Bloom post-processing.
+**Demo Langsung (Publik):** https://build-zaidana.github.io/makhraj-3d/
+
+Aplikasi web 3D interaktif gratis berbasis **Three.js + WebGL2** untuk membantu masyarakat umum, murid, dan pengajar memahami pelafalan **29 huruf Hijaiyah (Makharijul Huruf)** secara tepat dengan visualisasi anatomi 3D open-source (*BodyParts3D / OrganUI*), **X-Ray Fresnel Vision**, studio PBR lighting, mode latihan kuis, serta dukungan desktop & perangkat mobile.
 
 ## Fitur Utama
+- **Mode Belajar & Latihan Kuis Interaktif:** Pelajari 29 huruf lengkap dengan panduan pelafalan, catatan kesalahan umum, pelacakan progres (`localStorage`), serta kuis **Tebak Huruf 3D** dan **Tebak Makhraj**.
+- **Berbagi Tautan per Huruf (`?huruf=dhad`):** Salin tautan langsung ke huruf tertentu untuk dibagikan ke grup belajar/WhatsApp.
+- **Responsif Desktop & Mobile + Loading Progres 3D:** Layar muat progres aset 3D (`THREE.LoadingManager`), optimasi shadow/DPR otomatis di perangkat mobile, dan drawer bawah khusus layar kecil.
 - **Real Open-Source 3D Human Anatomy (`BodyParts3D` / `OrganUI`):**
   - `public/models/teeth.glb` — 28 gigi individual anatomis, gusi atas/bawah, maksila, dan mandibula berengsel pada sendi TMJ.
   - `public/models/nose.glb` — rongga hidung (*Al-Khaisyum*), konka hidung (*turbinates*), nasofaring, dan tulang palatina.

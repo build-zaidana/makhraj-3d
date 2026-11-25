@@ -147,8 +147,11 @@ export class AnatomicalLabels {
       const sx = (this._ndc.x * 0.5 + 0.5) * width;
       const sy = (-this._ndc.y * 0.5 + 0.5) * height;
 
-      // Avoid colliding with the right side panel on desktop when panel is open
-      const outOfBounds = sx < 24 || sx > width - 360 || sy < 72 || sy > height - 104;
+      // Respect open side panel on desktop, full viewport on mobile or Focus 3D mode
+      const isFocusOrMobile =
+        width < 768 || document.body.classList.contains('focus-3d');
+      const rightPad = isFocusOrMobile ? 28 : 360;
+      const outOfBounds = sx < 18 || sx > width - rightPad || sy < 72 || sy > height - 96;
       if (outOfBounds && !item.active) {
         item.el.style.opacity = '0';
         continue;

@@ -15,8 +15,9 @@ import { createPalateTextures } from './TextureGenerator.js';
  */
 
 export class VocalTract {
-  constructor(parentGroup) {
+  constructor(parentGroup, loadingManager = undefined) {
     this.group = new THREE.Group();
+    this.loadingManager = loadingManager;
     parentGroup.add(this.group);
 
     // Interactive sagittal clipping plane (slices near +X side open for side cutaway inspection)
@@ -319,7 +320,7 @@ export class VocalTract {
   }
 
   _loadAnatomicalModels() {
-    const loader = new GLTFLoader();
+    const loader = new GLTFLoader(this.loadingManager);
 
     // ------------------------------------------------------------------------
     // 1. REAL BODYPARTS3D TEETH, GUMS, MAXILLAE & ARTICULATED MANDIBLE

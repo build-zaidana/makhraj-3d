@@ -50,8 +50,16 @@ export class SceneManager {
 
     const width = container.clientWidth || window.innerWidth;
     const height = container.clientHeight || window.innerHeight;
-    this.camera = new THREE.PerspectiveCamera(36, width / height, 0.05, 45);
-    this.camera.position.copy(CAMERA_PRESETS.side.pos);
+    const aspect = width / height;
+    this.isMobile = width < 768;
+    const isPortrait = aspect < 0.85;
+
+    this.camera = new THREE.PerspectiveCamera(isPortrait ? 52 : 36, aspect, 0.05, 45);
+    if (isPortrait) {
+      this.camera.position.set(5.45, 0.35, 0.90);
+    } else {
+      this.camera.position.copy(CAMERA_PRESETS.side.pos);
+    }
 
     // WebGL2 Renderer with soft shadows and ACES filmic tone mapping
     this.renderer = new THREE.WebGLRenderer({
@@ -60,7 +68,7 @@ export class SceneManager {
       powerPreference: 'high-performance',
     });
     this.renderer.setSize(width, height);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.isMobile ? 1.5 : 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -88,7 +96,9 @@ export class SceneManager {
     this.controls.minDistance = 1.6;
     this.controls.maxDistance = 8.2;
     this.controls.maxPolarAngle = Math.PI * 0.85;
-    this.controls.target.copy(CAMERA_PRESETS.side.target);
+    this.controls.target.copy(
+      isPortrait ? new THREE.Vector3(0.0, 0.14, 0.16) : CAMERA_PRESETS.side.target
+    );
 
     this._camTransition = null;
     this.controls.addEventListener('start', () => {
@@ -140,12 +150,13 @@ export class SceneManager {
     this.hemiLight = new THREE.HemisphereLight('#f5f5f5', '#171717', 0.65);
     this.scene.add(this.hemiLight);
 
-    // 2. Primary neutral studio Key Light casting crisp 2048x2048 soft shadows
+    // 2. Primary neutral studio Key Light casting crisp soft shadows (adaptive map size for mobile)
     this.keyLight = new THREE.DirectionalLight('#ffffff', 1.38);
     this.keyLight.position.set(4.2, 5.4, 3.8);
     this.keyLight.castShadow = true;
-    this.keyLight.shadow.mapSize.width = 2048;
-    this.keyLight.shadow.mapSize.height = 2048;
+    const shadowSize = this.isMobile ? 1024 : 2048;
+    this.keyLight.shadow.mapSize.width = shadowSize;
+    this.keyLight.shadow.mapSize.height = shadowSize;
     this.keyLight.shadow.camera.near = 1.0;
     this.keyLight.shadow.camera.far = 16.0;
     const d = 3.0;
@@ -222,11 +233,20 @@ export class SceneManager {
 
   focusPreset(presetKey, duration = 0.78) {
     const preset = CAMERA_PRESETS[presetKey] || CAMERA_PRESETS.side;
+    const isPortrait = this.camera.aspect < 0.85;
+    const endPos = preset.pos.clone();
+    const endTarget = preset.target.clone();
+    if (isPortrait) {
+      // Center framing cleanly on narrow portrait screens (no desktop right sidebar offset)
+      endTarget.x = 0.0;
+      if (presetKey === 'side') endTarget.z = 0.16;
+      endPos.multiplyScalar(1.12);
+    }
     this._camTransition = {
       startPos: this.camera.position.clone(),
-      endPos: preset.pos.clone(),
+      endPos,
       startTarget: this.controls.target.clone(),
-      endTarget: preset.target.clone(),
+      endTarget,
       elapsed: 0,
       duration,
     };
@@ -270,10 +290,17 @@ export class SceneManager {
   onResize() {
     const width = this.container.clientWidth || window.innerWidth;
     const height = this.container.clientHeight || window.innerHeight;
-    const pixelRatio = Math.min(window.devicePixelRatio, 2);
+    const aspect = width / height;
+    const isPortrait = aspect < 0.85;
+    const pixelRatio = Math.min(window.devicePixelRatio, width < 768 ? 1.5 : 2);
 
-    this.camera.aspect = width / height;
+    this.camera.fov = isPortrait ? 52 : 36;
+    this.camera.aspect = aspect;
     this.camera.updateProjectionMatrix();
+    if (isPortrait && Math.abs(this.controls.target.z + 0.30) < 0.05) {
+      // Recenter desktop side offset cleanly if user resizes into portrait mobile view
+      this.controls.target.set(0.0, 0.14, 0.16);
+    }
     this.renderer.setSize(width, height);
     this.renderer.setPixelRatio(pixelRatio);
     this.composer.setSize(width, height);

@@ -15,9 +15,10 @@ import {
  * Also includes a clean, sculpted stylized fallback head option ("Kepala Simpel").
  */
 export class OuterHeadShell {
-  constructor(parentGroup, renderer) {
+  constructor(parentGroup, renderer, loadingManager = undefined) {
     this.group = new THREE.Group();
     this.renderer = renderer;
+    this.loadingManager = loadingManager;
     parentGroup.add(this.group);
 
     this.xrayUniforms = {
@@ -120,11 +121,11 @@ export class OuterHeadShell {
   }
 
   _loadFaceCapGLB() {
-    const loader = new GLTFLoader();
+    const loader = new GLTFLoader(this.loadingManager);
     loader.setMeshoptDecoder(MeshoptDecoder);
 
     if (this.renderer) {
-      const ktx2Loader = new KTX2Loader();
+      const ktx2Loader = new KTX2Loader(this.loadingManager);
       ktx2Loader.setTranscoderPath('./basis/');
       ktx2Loader.detectSupport(this.renderer);
       loader.setKTX2Loader(ktx2Loader);

@@ -7,4 +7,13 @@ export default defineConfig({
     open: false,
   },
   assetsInclude: ['**/*.glb', '**/*.gltf', '**/*.glsl'],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          three: ['three'],
+        },
+      },
+    },
+  },
 });

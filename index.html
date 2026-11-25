@@ -2,8 +2,21 @@
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Makhraj 3D — Visualisasi Anatomi Makharijul Huruf</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Makhraj 3D — Visualisasi Anatomi X-Ray Makharijul Huruf</title>
+    <meta
+      name="description"
+      content="Aplikasi web 3D interaktif gratis untuk belajar pelafalan 29 huruf Hijaiyah (Makharijul Huruf) dengan X-Ray Vision, anatomi organ bicara 3D, aliran udara, audio pelafalan, dan kuis latihan."
+    />
+    <meta name="theme-color" content="#090909" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Makhraj 3D — Visualisasi Anatomi X-Ray Makharijul Huruf" />
+    <meta
+      property="og:description"
+      content="Pelajari posisi lidah, gigi, tenggorokan, dan rongga hidung untuk 29 huruf Hijaiyah secara interaktif dalam 3D X-Ray lengkap dengan audio pelafalan dan kuis latihan."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -12,11 +25,37 @@
     />
   </head>
   <body>
+    <!-- Monochrome Initial 3D Asset Loading Screen -->
+    <div id="loading-screen" class="loading-screen" role="status" aria-live="polite">
+      <div class="loading-inner">
+        <div class="loading-mark" aria-hidden="true">ض</div>
+        <div class="loading-title">Makhraj 3D</div>
+        <div class="loading-track">
+          <div id="loading-bar" class="loading-bar"></div>
+        </div>
+        <div id="loading-status" class="loading-status">Memuat anatomi 3D — 0%</div>
+      </div>
+    </div>
+
+    <!-- Graceful WebGL Fallback Notice -->
+    <div id="webgl-fallback" class="webgl-fallback hidden" role="alert">
+      <div class="fallback-card">
+        <h2>WebGL Tidak Tersedia</h2>
+        <p>
+          Perangkat atau browser Anda saat ini tidak mengaktifkan akselerasi WebGL yang diperlukan untuk menampilkan anatomi 3D.
+          Silakan gunakan Chrome, Edge, Firefox, atau Safari versi terbaru dengan akselerasi perangkat keras aktif.
+        </p>
+      </div>
+    </div>
+
     <!-- Full-Viewport Three.js 3D Stage -->
     <div id="canvas-container" aria-label="Visualisasi 3D Makharijul Huruf"></div>
 
     <!-- 3D-Projected Anatomical Organ Callout Labels Overlay -->
     <div id="labels-layer" class="labels-layer" aria-hidden="true"></div>
+
+    <!-- Subtle Monochrome Toast Notification -->
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
     <!-- Top-Left Brand Header & 5 Makharij Category Filter Bar -->
     <header class="top-bar">
@@ -27,12 +66,21 @@
           <p class="brand-sub">Visualisasi Anatomi Makharijul Huruf</p>
         </div>
         <div class="brand-actions">
-          <button id="btn-focus-3d" class="icon-btn" title="Mode Fokus 3D (Sembunyikan/Tampilkan Panel)" aria-label="Mode Fokus 3D">
+          <button id="btn-share" class="icon-btn" title="Salin tautan huruf ini" aria-label="Salin tautan huruf">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="18" cy="5" r="3"/>
+              <circle cx="6" cy="12" r="3"/>
+              <circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+          </button>
+          <button id="btn-focus-3d" class="icon-btn desktop-only" title="Mode Fokus 3D (Sembunyikan/Tampilkan Panel)" aria-label="Mode Fokus 3D">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
             </svg>
           </button>
-          <button id="btn-info-modal" class="icon-btn" title="Informasi Teknis & Kredit Aset" aria-label="Informasi Teknis">
+          <button id="btn-info-modal" class="icon-btn" title="Tentang & Kredit Aset" aria-label="Tentang Aplikasi">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"/>
               <line x1="12" y1="16" x2="12" y2="12"/>
@@ -47,6 +95,29 @@
       </nav>
     </header>
 
+    <!-- Mobile Quick Action Bar (visible only on small screens above bottom dock) -->
+    <div class="mobile-quickbar" id="mobile-quickbar">
+      <div class="mobile-letter-summary">
+        <span class="mobile-char" id="mobile-char">ت</span>
+        <div>
+          <strong id="mobile-phonetic">Ta</strong>
+          <small id="mobile-makhraj">Al-Lisan</small>
+        </div>
+      </div>
+      <div class="mobile-quick-actions">
+        <button id="btn-mobile-play" class="mobile-play-btn" aria-label="Putar audio dan simulasi">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          </svg>
+          <span>Ucapkan</span>
+        </button>
+        <button id="btn-mobile-drawer" class="mobile-drawer-btn" aria-expanded="false" aria-controls="side-panel">
+          Panduan &amp; Kuis
+        </button>
+      </div>
+    </div>
+
     <!-- Bottom-Left Minimalist Keyboard & Airflow Legend -->
     <aside class="legend-card" aria-label="Keterangan Kontrol">
       <div class="legend-items">
@@ -57,58 +128,128 @@
       <div class="legend-hint">Seret: Putar 360° &nbsp;/&nbsp; Gulir: Zoom &nbsp;/&nbsp; Spasi: Ucapkan &nbsp;/&nbsp; Panah: Ganti Huruf</div>
     </aside>
 
-    <!-- Right Monochrome Panel -->
+    <!-- Right Monochrome Panel (Desktop Sidebar / Mobile Expandable Sheet) -->
     <aside class="side-panel" id="side-panel">
-      <!-- Active Letter Identity -->
-      <section class="letter-hero" id="letter-hero">
-        <div class="letter-glyph-wrap" id="letter-glyph-wrap">
-          <span class="letter-glyph" id="active-char">ت</span>
-        </div>
-        <div class="letter-meta">
-          <div class="letter-name-row">
-            <h2 id="active-phonetic">Ta</h2>
-            <span class="makhraj-badge" id="active-makhraj-badge">Al-Lisan</span>
-          </div>
-          <p class="sub-makhraj" id="active-submakhraj">Tharaful Lisan → Pangkal Gigi Seri Atas</p>
-          <div class="sifat-chips" id="active-sifat"></div>
-        </div>
-      </section>
-
-      <!-- Action Row: Audio + Articulation + Slow-Motion -->
-      <section class="action-row">
-        <button id="btn-play" class="btn-primary">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+      <!-- Mobile Drawer Close Header -->
+      <div class="mobile-sheet-header">
+        <span>Panduan, Latihan &amp; Kontrol 3D</span>
+        <button id="btn-close-drawer" class="icon-btn" aria-label="Tutup Panel">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
-          <span>Dengarkan &amp; Simulasikan</span>
         </button>
-        <button id="btn-slowmo" class="btn-toggle" title="Perlambat animasi dan audio 0.5x">
-          0.5x
-        </button>
-      </section>
+      </div>
 
-      <!-- Step-by-Step Pronunciation Guidance -->
-      <section class="guide-box">
-        <h3>Cara Pengucapan</h3>
-        <p id="active-howto"></p>
-        <div class="tip-box">
-          <span class="tip-label">Catatan</span>
-          <span id="active-mistake"></span>
-        </div>
-      </section>
+      <!-- Mode Tabs: Belajar vs Latihan (Kuis) -->
+      <div class="panel-tabs" role="tablist">
+        <button id="tab-learn" class="active" role="tab" aria-selected="true" data-tab="learn">Belajar</button>
+        <button id="tab-quiz" role="tab" aria-selected="false" data-tab="quiz">Latihan Kuis</button>
+      </div>
 
-      <!-- Quick Compare Confusing Letters -->
-      <section class="compare-box">
-        <div class="section-head">
-          <h3>Bandingkan Huruf</h3>
-          <span class="compare-caption" id="compare-caption">Pilih huruf serupa</span>
-        </div>
-        <div class="compare-pairs" id="compare-pairs"></div>
-      </section>
+      <!-- ================= TAB 1: BELAJAR ================= -->
+      <div id="view-learn" class="tab-content">
+        <!-- Active Letter Identity -->
+        <section class="letter-hero" id="letter-hero">
+          <div class="letter-glyph-wrap" id="letter-glyph-wrap">
+            <span class="letter-glyph" id="active-char">ت</span>
+          </div>
+          <div class="letter-meta">
+            <div class="letter-name-row">
+              <h2 id="active-phonetic">Ta</h2>
+              <span class="makhraj-badge" id="active-makhraj-badge">Al-Lisan</span>
+            </div>
+            <p class="sub-makhraj" id="active-submakhraj">Tharaful Lisan → Pangkal Gigi Seri Atas</p>
+            <div class="sifat-chips" id="active-sifat"></div>
+          </div>
+        </section>
 
-      <!-- X-Ray Vision, Cutaway & Camera Controls -->
+        <!-- Action Row: Audio + Articulation + Slow-Motion -->
+        <section class="action-row">
+          <button id="btn-play" class="btn-primary">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+            </svg>
+            <span>Dengarkan &amp; Simulasikan</span>
+          </button>
+          <button id="btn-slowmo" class="btn-toggle" title="Perlambat animasi dan audio 0.5x">
+            0.5x
+          </button>
+        </section>
+
+        <!-- Learning Progress Bar -->
+        <section class="progress-box">
+          <div class="progress-row">
+            <span>Progres Belajar</span>
+            <strong id="progress-label">0 / 29 huruf</strong>
+          </div>
+          <div class="progress-track">
+            <div id="progress-fill" class="progress-fill"></div>
+          </div>
+        </section>
+
+        <!-- Step-by-Step Pronunciation Guidance -->
+        <section class="guide-box">
+          <h3>Cara Pengucapan</h3>
+          <p id="active-howto"></p>
+          <div class="tip-box">
+            <span class="tip-label">Catatan</span>
+            <span id="active-mistake"></span>
+          </div>
+        </section>
+
+        <!-- Quick Compare Confusing Letters -->
+        <section class="compare-box">
+          <div class="section-head">
+            <h3>Bandingkan Huruf</h3>
+            <span class="compare-caption" id="compare-caption">Pilih huruf serupa</span>
+          </div>
+          <div class="compare-pairs" id="compare-pairs"></div>
+        </section>
+      </div>
+
+      <!-- ================= TAB 2: LATIHAN KUIS ================= -->
+      <div id="view-quiz" class="tab-content hidden">
+        <section class="quiz-header-box">
+          <div class="segmented segmented-2" id="quiz-mode-buttons">
+            <button data-qmode="letter" class="active">Tebak Huruf 3D</button>
+            <button data-qmode="makhraj">Tebak Makhraj</button>
+          </div>
+          <div class="quiz-stats">
+            <div><span class="stat-label">Benar</span><strong id="q-stat-correct">0</strong></div>
+            <div><span class="stat-label">Soal</span><strong id="q-stat-total">0</strong></div>
+            <div><span class="stat-label">Beruntun</span><strong id="q-stat-streak">0</strong></div>
+          </div>
+        </section>
+
+        <section class="quiz-card">
+          <div class="quiz-prompt-row">
+            <div class="quiz-mystery-glyph" id="quiz-mystery-glyph">?</div>
+            <p id="quiz-prompt" class="quiz-prompt">Amati posisi lidah, aliran udara, dan dengarkan suaranya.</p>
+          </div>
+
+          <button id="btn-quiz-replay" class="btn-secondary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            </svg>
+            <span>Putar Ulang Suara &amp; Gerakan 3D</span>
+          </button>
+
+          <div id="quiz-options" class="quiz-options"></div>
+
+          <div id="quiz-feedback" class="quiz-feedback hidden">
+            <strong id="quiz-feedback-title"></strong>
+            <p id="quiz-feedback-body"></p>
+          </div>
+
+          <button id="btn-quiz-next" class="btn-primary hidden">Soal Berikutnya</button>
+        </section>
+      </div>
+
+      <!-- Shared X-Ray Vision, Cutaway & Camera Controls -->
       <section class="controls-box">
         <h3>Tampilan &amp; Kamera</h3>
 
@@ -190,11 +331,11 @@
       </button>
     </footer>
 
-    <!-- Technical Computer Graphics Info & Open-Source Attribution Modal -->
+    <!-- About, Technical Info & Open-Source Attribution Modal -->
     <div class="modal-backdrop hidden" id="info-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div class="modal-card">
         <div class="modal-header">
-          <h2 id="modal-title">Informasi Teknis &amp; Kredit Aset</h2>
+          <h2 id="modal-title">Tentang Makhraj 3D &amp; Kredit Aset</h2>
           <button id="btn-close-modal" class="icon-btn" aria-label="Tutup">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"/>
@@ -204,17 +345,20 @@
         </div>
         <div class="modal-body">
           <p>
-            <strong>Makhraj 3D</strong> memadukan model anatomi manusia 3D berbasis MRI open-source
-            dengan teknik rendering Three.js / WebGL2 untuk memvisualisasikan 29 huruf Hijaiyah
-            berdasarkan <em>Al-Muqaddimah Al-Jazariyyah</em>.
+            <strong>Makhraj 3D</strong> adalah media pembelajaran web 3D interaktif gratis untuk memahami
+            titik artikulasi 29 huruf Hijaiyah berdasarkan <em>Al-Muqaddimah Al-Jazariyyah</em>.
+            Gunakan sebagai alat bantu visual — untuk talaqqi dan koreksi bacaan tetap disarankan belajar bersama guru tajwid.
           </p>
           <ul>
-            <li><strong>Anatomi 3D Open-Source (BodyParts3D / OrganUI, CC BY-SA 2.1):</strong> 28 gigi individual, gusi, maksila &amp; mandibula berengsel (<code>teeth.glb</code>), rongga hidung <em>Al-Khaisyum</em> &amp; nasofaring (<code>nose.glb</code>), serta tulang hyoid, kartilago laring, epiglotis, pita suara &amp; trakea (<code>larynx.glb</code>).</li>
-            <li><strong>Custom GLSL Shaders (3 Shader):</strong> X-Ray Fresnel + Real-Time Sagittal Cutaway Rim pada <code>facecap.glb</code> (52 ARKit blendshapes), Makhraj Contact Beacon, dan Volumetric Airflow Particles.</li>
-            <li><strong>Procedural Spline Tongue:</strong> Lidah 44×52 terdeformasi per-vertex secara real-time sepanjang kurva <em>Catmull-Rom</em> dengan material <code>MeshPhysicalMaterial</code> dan tekstur prosedural 512px.</li>
-            <li><strong>Studio PBR &amp; Post-Processing:</strong> IBL <code>RoomEnvironment</code>, 3-Point Studio Lighting + <code>PCFSoftShadowMap</code> 2048×2048, serta MSAA <code>EffectComposer</code> + <code>UnrealBloomPass</code> selektif.</li>
-            <li><strong>Audio Pelafalan:</strong> 29 rekaman huruf Arab lokal dari <code>adnan/Arabic-Alphabet</code> melalui Web Audio API + <code>AnalyserNode</code>.</li>
+            <li><strong>Anatomi 3D Open-Source (BodyParts3D / OrganUI, CC BY-SA 2.1):</strong> 28 gigi individual, gusi, maksila &amp; mandibula berengsel (<code>teeth.glb</code>), rongga hidung <em>Al-Khaisyum</em> &amp; nasofaring (<code>nose.glb</code>), serta hyoid, kartilago laring, epiglotis, pita suara &amp; trakea (<code>larynx.glb</code>).</li>
+            <li><strong>Cangkang Kepala &amp; Custom GLSL Shaders:</strong> <code>facecap.glb</code> (Three.js / CC0, 52 ARKit blendshapes) dengan X-Ray Fresnel + Sagittal Cutaway shader, Makhraj Beacon, dan Volumetric Airflow Particles.</li>
+            <li><strong>Procedural Spline Tongue &amp; Studio PBR:</strong> Lidah 44×52 terdeformasi per-vertex secara real-time, IBL <code>RoomEnvironment</code>, <code>PCFSoftShadowMap</code>, serta MSAA + HDR Selective Bloom.</li>
+            <li><strong>Audio Pelafalan:</strong> 29 rekaman huruf Arab dari repositori open-source <code>adnan/Arabic-Alphabet</code> melalui Web Audio API + <code>AnalyserNode</code>.</li>
           </ul>
+          <div class="modal-footer-actions">
+            <button id="btn-reset-progress" class="btn-ghost">Reset Progres Belajar</button>
+            <a href="https://github.com/build-zaidana/makhraj-3d" target="_blank" rel="noopener noreferrer" class="btn-ghost-link">Kode Sumber (GitHub)</a>
+          </div>
         </div>
       </div>
     </div>
