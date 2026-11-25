@@ -1,6 +1,6 @@
 /**
- * Custom GLSL Shaders: Volumetric Airflow & Sound Wave Particles
- * Renders soft glowing sprites along oral, nasal (Al-Khaisyum), and throat (Al-Halq) paths.
+ * Custom GLSL Shaders: Fine-Mist Aerodynamic Airflow & Acoustic Streamlines
+ * Renders silky, subtle, clinical-grade micro-particles (never chunky cotton balls).
  */
 
 export const airflowParticleVertexShader = /* glsl */ `
@@ -18,7 +18,7 @@ export const airflowParticleVertexShader = /* glsl */ `
     vColor = aColor;
 
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    gl_PointSize = aSize * uPixelRatio * (180.0 / max(-mvPosition.z, 0.5));
+    gl_PointSize = aSize * uPixelRatio * (105.0 / max(-mvPosition.z, 0.5));
     gl_Position = projectionMatrix * mvPosition;
   }
 `;
@@ -32,12 +32,12 @@ export const airflowParticleFragmentShader = /* glsl */ `
     float dist = length(center);
     if (dist > 0.5) discard;
 
-    // Soft glowing radial Gaussian falloff with bright inner core
-    float soft = smoothstep(0.5, 0.05, dist);
-    float core = smoothstep(0.24, 0.0, dist);
+    // Ultra-silky exponential Gaussian mist profile
+    float mist = exp(-dist * dist * 16.0);
+    float core = smoothstep(0.22, 0.0, dist);
 
-    vec3 finalColor = mix(vColor, vec3(1.0), core * 0.55);
-    float finalAlpha = soft * vAlpha;
+    vec3 finalColor = mix(vColor, vec3(1.0), core * 0.45);
+    float finalAlpha = mist * vAlpha;
 
     gl_FragColor = vec4(finalColor, finalAlpha);
   }

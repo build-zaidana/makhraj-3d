@@ -15,12 +15,17 @@ const DEFAULT_DATA = {
   prefs: {
     viewMode: 'xray-cut',
     clipX: 0.04,
-    opacity: 0.78,
+    opacity: 0.72,
     showAirflow: true,
     showLabels: true,
     autoCamera: false,
     bloom: true,
     simpleHead: false,
+    layerSkull: true,
+    layerJaw: true,
+    layerPharynx: true,
+    layerNasal: true,
+    layerTongue: true,
   },
 };
 

@@ -1,17 +1,18 @@
 import * as THREE from 'three';
-import { createTongueTextures } from './TextureGenerator.js';
+import { applySubsurfaceScattering, createTongueTextures } from './TextureGenerator.js';
 
 /**
- * TongueMesh — High-Resolution Sculpted Procedural Deformable 3D Tongue
+ * TongueMesh — 1:1 MRI-Proportioned Sculpted Procedural Deformable Tongue (56x64)
  *
- * 44x52 smooth anatomical loft along a dynamic 6-point Catmull-Rom spline,
- * rendered with wet-mucosa MeshPhysicalMaterial (clearcoat + velvety sheen +
- * 512x512 procedural diffuse/normal/roughness maps) and aligned precisely inside
- * the real BodyParts3D dental arches (teeth.glb) and above the hyoid bone (larynx.glb).
+ * Calibrated directly into the real BodyParts3D MRI tongue volume:
+ *   X in [-0.28, +0.28], Y in [-0.35, +0.18], Z in [-0.20, +0.66]
+ * Features real-time Fast Subsurface Scattering (SSS), moist mucosal clearcoat,
+ * 512px micro-papillae normal/roughness maps, and an organic sublingual genioglossus
+ * base sling anchoring smoothly into the inner chin symphysis of the real mandible.
  */
 
-const SEGMENTS_U = 44;
-const SEGMENTS_V = 52;
+const SEGMENTS_U = 56;
+const SEGMENTS_V = 64;
 
 export class TongueMesh {
   constructor(parentGroup) {
@@ -21,21 +22,24 @@ export class TongueMesh {
     const { map, normalMap, roughnessMap } = createTongueTextures();
 
     this.geometry = this._createLoftGeometry();
-    this.material = new THREE.MeshPhysicalMaterial({
-      map,
-      normalMap,
-      normalScale: new THREE.Vector2(0.75, 0.75),
-      roughnessMap,
-      color: new THREE.Color('#f47c90'),
-      roughness: 0.42,
-      metalness: 0.0,
-      clearcoat: 0.72,
-      clearcoatRoughness: 0.22,
-      sheen: 0.45,
-      sheenRoughness: 0.55,
-      sheenColor: new THREE.Color('#ffd6e0'),
-      side: THREE.DoubleSide,
-    });
+    this.material = applySubsurfaceScattering(
+      new THREE.MeshPhysicalMaterial({
+        map,
+        normalMap,
+        normalScale: new THREE.Vector2(0.82, 0.82),
+        roughnessMap,
+        color: new THREE.Color('#de6e82'),
+        roughness: 0.36,
+        metalness: 0.0,
+        clearcoat: 0.78,
+        clearcoatRoughness: 0.20,
+        sheen: 0.42,
+        sheenRoughness: 0.50,
+        sheenColor: new THREE.Color('#ffd6df'),
+        side: THREE.DoubleSide,
+      }),
+      { color: '#c8243e', intensity: 0.52, power: 2.2, wrap: 0.5 }
+    );
 
     this.mesh = new THREE.Mesh(this.geometry, this.material);
     this.mesh.castShadow = true;
@@ -73,6 +77,10 @@ export class TongueMesh {
     );
   }
 
+  setVisible(flag) {
+    this.group.visible = flag;
+  }
+
   _createLoftGeometry() {
     const vertCount = (SEGMENTS_V + 1) * (SEGMENTS_U + 1);
     const positions = new Float32Array(vertCount * 3);
@@ -108,25 +116,26 @@ export class TongueMesh {
   }
 
   updatePose(pose, time = 0, audioLevel = 0) {
-    const breath = Math.sin(time * 2.1) * 0.006;
+    const breath = Math.sin(time * 2.0) * 0.005;
     const trill =
-      pose.curl > 0.5 ? Math.sin(time * 28.0) * 0.015 * (0.4 + audioLevel * 1.4) : 0;
-    const jawDrop = (pose.jawOpen - 0.22) * 0.14;
+      pose.curl > 0.5 ? Math.sin(time * 28.0) * 0.014 * (0.4 + audioLevel * 1.3) : 0;
+    const jawDrop = (pose.jawOpen - 0.22) * 0.13;
 
-    // Spine calibrated to taper cleanly above hyoid bone -> real BodyParts3D oral vault & incisors
-    this._ctrlPts[0].set(0, -0.36, -0.22);
-    this._ctrlPts[1].set(0, -0.14 + pose.backY * 0.40, -0.18 - pose.backY * 0.05);
-    this._ctrlPts[2].set(0, 0.03 + pose.backY * 0.88 + breath, -0.02 - pose.backY * 0.06);
-    this._ctrlPts[3].set(0, 0.05 + pose.midY * 0.92 - jawDrop * 0.32 + breath, 0.24);
+    // 6-point Catmull-Rom spine calibrated 1:1 to real MRI tongue volume & surrounding landmarks:
+    // Root sits cleanly anterior to epiglottis (Z=-0.125) and superior to hyoid (Y=-0.21..-0.48)
+    this._ctrlPts[0].set(0, -0.32, -0.08);
+    this._ctrlPts[1].set(0, -0.14 + pose.backY * 0.36, -0.09 - pose.backY * 0.05);
+    this._ctrlPts[2].set(0, 0.02 + pose.backY * 0.82 + breath, -0.01 - pose.backY * 0.08);
+    this._ctrlPts[3].set(0, 0.05 + pose.midY * 0.86 - jawDrop * 0.28 + breath, 0.20);
     this._ctrlPts[4].set(
       0,
-      0.01 + pose.bladeY * 0.82 - jawDrop * 0.42 + trill * 0.5,
-      0.48 + pose.tipZ * 0.34
+      0.01 + pose.bladeY * 0.76 - jawDrop * 0.36 + trill * 0.5,
+      0.42 + pose.tipZ * 0.30
     );
     this._ctrlPts[5].set(
       0,
-      -0.02 + pose.tipY * 0.92 + pose.curl * 0.055 - jawDrop * 0.28 + trill,
-      0.70 + pose.tipZ * 0.85 - pose.curl * 0.05
+      -0.02 + pose.tipY * 0.86 + pose.curl * 0.05 - jawDrop * 0.24 + trill,
+      0.62 + pose.tipZ * 0.80 - pose.curl * 0.05
     );
 
     const posAttr = this.geometry.attributes.position;
@@ -143,19 +152,18 @@ export class TongueMesh {
         this._up.negate();
       }
 
-      // Silky rounded tip taper + smooth closed organic root taper (no blunt cut at hyoid!)
-      const tipCap = Math.pow(Math.max(0, 1.0 - Math.pow(v, 5.2)), 0.46);
-      const baseTaper = Math.pow(Math.min(1, v * 4.5), 0.55);
+      // Smooth anatomical closures at both root (v=0) and nimble apex (v=1)
+      const tipCap = Math.pow(Math.max(0, 1.0 - Math.pow(v, 5.4)), 0.46);
+      const baseTaper = Math.pow(Math.min(1, v * 4.2), 0.52);
 
-      // Lateral flare along Hafatul Lisan (touches real BodyParts3D upper molars at ±0.35 on Dhad!)
+      // Lateral spread (Hafatul Lisan reaches inner upper molars at X=+-0.25..0.37 on Dhad!)
       const sideEnvelope = Math.sin(THREE.MathUtils.clamp((v - 0.16) / 0.74, 0, 1) * Math.PI);
       const halfWidth =
-        (0.22 * baseTaper * (1.0 - 0.42 * Math.pow(v, 1.7)) +
-          pose.sideLift * 0.145 * sideEnvelope) *
+        (0.24 * baseTaper * (1.0 - 0.44 * Math.pow(v, 1.7)) +
+          pose.sideLift * 0.135 * sideEnvelope) *
         tipCap;
 
-      // Plump anatomical body thinning gracefully towards both smooth root and nimble tip
-      const halfHeight = (0.142 * (1.0 - 0.58 * v) + 0.026) * tipCap * baseTaper;
+      const halfHeight = (0.145 * (1.0 - 0.58 * v) + 0.025) * tipCap * baseTaper;
 
       for (let iu = 0; iu <= SEGMENTS_U; iu++) {
         const theta = (iu / SEGMENTS_U) * Math.PI * 2.0;
@@ -165,31 +173,31 @@ export class TongueMesh {
         let localX = cosT * halfWidth;
         let localUp = sinT * halfHeight;
 
-        // Subtle anatomical keel underneath (sublingual floor) & rounded dorsal arch
         if (sinT < 0) {
-          localUp *= 0.78;
+          // Organic fuller anatomical genioglossus muscular belly tapering smoothly at blade & tip
+          const belly = 0.82 + 0.58 * Math.sin(THREE.MathUtils.clamp((v - 0.06) / 0.68, 0, 1) * Math.PI);
+          localUp *= belly;
         } else {
-          // Slight flattened broad dorsum characteristic of human tongue
-          localUp *= 0.92 + 0.12 * Math.cos(cosT * Math.PI * 0.5);
+          localUp *= 0.90 + 0.14 * Math.cos(cosT * Math.PI * 0.5);
         }
 
-        // Anatomical median sulcus + deeper sibilant air-channel groove for Sin/Shad/Zay
+        // Median dorsal sulcus + sibilant groove (Sin, Shad, Zay)
         if (sinT > 0.08) {
-          const centerFactor = Math.exp(-Math.pow(cosT * 2.5, 2.0));
-          const grooveDepth = (0.018 + pose.groove * 0.055 * sideEnvelope) * sinT;
+          const centerFactor = Math.exp(-Math.pow(cosT * 2.6, 2.0));
+          const grooveDepth = (0.017 + pose.groove * 0.052 * sideEnvelope) * sinT;
           localUp -= centerFactor * grooveDepth;
         }
 
-        // Lateral edge elevation for Dhad (Hafatul Lisan pressing against upper molars!)
+        // Lateral margin elevation toward upper molars (Dhad & Lam)
         if (pose.sideLift > 0.01) {
           const edgeFactor = Math.pow(Math.abs(cosT), 2.1);
-          localUp += edgeFactor * pose.sideLift * 0.135 * sideEnvelope;
+          localUp += edgeFactor * pose.sideLift * 0.13 * sideEnvelope;
         }
 
-        // Subtle upward apex scoop for Ra'
+        // Subtle apex curl for Ra'
         if (pose.curl > 0.01 && v > 0.78) {
           const tipFactor = (v - 0.78) / 0.22;
-          localUp += tipFactor * tipFactor * pose.curl * 0.042;
+          localUp += tipFactor * tipFactor * pose.curl * 0.04;
         }
 
         const idx = (iv * (SEGMENTS_U + 1) + iu) * 3;

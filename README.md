@@ -8,10 +8,9 @@ Aplikasi web 3D interaktif gratis berbasis **Three.js + WebGL2** untuk membantu 
 - **Mode Belajar & Latihan Kuis Interaktif:** Pelajari 29 huruf lengkap dengan panduan pelafalan, catatan kesalahan umum, pelacakan progres (`localStorage`), serta kuis **Tebak Huruf 3D** dan **Tebak Makhraj**.
 - **Berbagi Tautan per Huruf (`?huruf=dhad`):** Salin tautan langsung ke huruf tertentu untuk dibagikan ke grup belajar/WhatsApp.
 - **Responsif Desktop & Mobile + Loading Progres 3D:** Layar muat progres aset 3D (`THREE.LoadingManager`), optimasi shadow/DPR otomatis di perangkat mobile, dan drawer bawah khusus layar kecil.
-- **Real Open-Source 3D Human Anatomy (`BodyParts3D` / `OrganUI`):**
-  - `public/models/teeth.glb` — 28 gigi individual anatomis, gusi atas/bawah, maksila, dan mandibula berengsel pada sendi TMJ.
-  - `public/models/nose.glb` — rongga hidung (*Al-Khaisyum*), konka hidung (*turbinates*), nasofaring, dan tulang palatina.
-  - `public/models/larynx.glb` — tulang hyoid, kartilago tiroid/krikoid/aritenoid, epiglotis beranimasi (*Wasathul Halq* ع ح), pita suara bergetar (*Aqshal Halq* ء ه), dan trakea.
+- **Real Open-Source 1:1 MRI Human Anatomy (`BodyParts3D` / `OrganUI`):**
+  - `public/models/anatomy_head_1to1.glb` (4,3 MB, 78 struktur anatomi terkalibrasi 1:1 dalam satu ruang koordinat MRI): tengkorak (*cranium*), ruas tulang leher **C1–C6** + diskus intervertebralis, **28 gigi individual** + gusi + maksila + mandibula berengsel TMJ, rongga hidung (*Al-Khaisyum*) + konka + nasofaring, otot konstriktor faring + *musculus uvulae*, serta hyoid, kartilago laring, epiglotis, pita suara, dan trakea — lengkap dengan kontrol **Diseksi Lapisan Anatomi**.
+- **Real-Time Subsurface Scattering (SSS) & Fine-Mist Airflow:** Material `MeshPhysicalMaterial` dengan *Fast Subsurface Scattering* (`onBeforeCompile`) pada lidah `56×64`, gusi, mukosa faring, dan enamel gigi, dipadukan partikel *silky fine-mist* sepanjang saluran napas MRI 1:1.
 - **X-Ray Fresnel Vision + Interactive Sagittal Cutaway:** Custom GLSL shader pada model kepala `facecap.glb` (52 ARKit blendshapes) dengan slider irisan sagital real-time dan tepi potongan bercahaya.
 - **High-Res Procedural Deformable Tongue:** Lidah 44×52 high-res yang terdeformasi per-vertex secara real-time sepanjang kurva *Catmull-Rom Spline* dengan material `MeshPhysicalMaterial` (wet clearcoat, velvety sheen, dan tekstur 512px prosedural).
 - **Interactive 3D Anatomical Callout Labels:** Penunjuk anatomi 3D yang otomatis menyorot organ aktif sesuai huruf Hijaiyah yang dipilih.

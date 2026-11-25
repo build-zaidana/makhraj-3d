@@ -135,17 +135,10 @@ export class OuterHeadShell {
       './models/facecap.glb',
       (gltf) => {
         const root = gltf.scene;
-        // Mathematically calibrated from facecap.glb bounding box inspection + visual QA:
-        // wraps the sculpted face, nose, lips & jaw cleanly over our internal vocal tract!
-        root.scale.setScalar(1.44);
-        root.position.set(0, 0.56, -0.08);
-
-        // Add subtle X-Ray neck contour below facecap's jaw edge to frame lower Al-Halq
-        const neckExtGeo = new THREE.CylinderGeometry(0.46, 0.56, 0.92, 36, 1, true);
-        const neckExt = new THREE.Mesh(neckExtGeo, this.xrayMaterial);
-        neckExt.position.set(0, -0.82, -0.44);
-        neckExt.renderOrder = 10;
-        this.neckExtMesh = neckExt;
+        // Calibrated 1:1 onto our MRI-registered skull (incisors Z=0.78, cranium Y=2.32, nose Z=0.97)
+        // No artificial cylinder neck needed since real MRI C1-C6 spine, pharynx & trachea frame the neck!
+        root.scale.setScalar(1.42);
+        root.position.set(0, 0.55, -0.02);
 
         root.traverse((obj) => {
           if (!obj.isMesh) return;
@@ -174,7 +167,7 @@ export class OuterHeadShell {
         });
 
         this.glbContainer = new THREE.Group();
-        this.glbContainer.add(root, this.neckExtMesh);
+        this.glbContainer.add(root);
         this.group.add(this.glbContainer);
 
         if (!this.useProceduralFallback) {

@@ -13,28 +13,28 @@ import { createPedestalTextures } from './TextureGenerator.js';
  */
 export const CAMERA_PRESETS = {
   side: {
-    pos: new THREE.Vector3(4.85, 0.42, 0.95),
-    target: new THREE.Vector3(0.0, 0.18, -0.30),
+    pos: new THREE.Vector3(5.65, 0.45, 0.85),
+    target: new THREE.Vector3(0.0, 0.24, -0.42),
     label: 'Samping (Sagital)',
   },
   throat: {
-    pos: new THREE.Vector3(3.95, -0.25, 0.08),
-    target: new THREE.Vector3(0.0, -0.32, -0.52),
+    pos: new THREE.Vector3(4.20, -0.22, 0.10),
+    target: new THREE.Vector3(0.0, -0.34, -0.52),
     label: 'Tenggorokan (Al-Halq)',
   },
   lips: {
-    pos: new THREE.Vector3(2.65, 0.16, 3.05),
-    target: new THREE.Vector3(0.32, 0.04, 0.48),
+    pos: new THREE.Vector3(2.85, 0.18, 3.25),
+    target: new THREE.Vector3(0.32, 0.06, 0.45),
     label: 'Bibir & Gigi Depan',
   },
   dhad: {
-    pos: new THREE.Vector3(0.42, 1.55, 3.65),
-    target: new THREE.Vector3(0.38, 0.12, 0.20),
+    pos: new THREE.Vector3(0.42, 1.65, 3.85),
+    target: new THREE.Vector3(0.38, 0.14, 0.18),
     label: '3D Geraham (Khusus ض)',
   },
   front: {
-    pos: new THREE.Vector3(0.18, 0.38, 4.75),
-    target: new THREE.Vector3(0.45, 0.22, 0.0),
+    pos: new THREE.Vector3(0.18, 0.45, 5.15),
+    target: new THREE.Vector3(0.45, 0.30, 0.0),
     label: 'Depan 360°',
   },
 };

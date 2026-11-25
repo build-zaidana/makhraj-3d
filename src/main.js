@@ -19,7 +19,7 @@ import { ProgressStore } from './learning/ProgressStore.js';
 import { QuizManager } from './learning/QuizManager.js';
 
 // ============================================================================
-// 0. WebGL Availability Check & Loading Manager
+// 0. WebGL Availability Guard & Shared Asset LoadingManager
 // ============================================================================
 const loadingScreen = document.getElementById('loading-screen');
 const loadingBar = document.getElementById('loading-bar');
@@ -48,21 +48,20 @@ const finishLoading = () => {
   loadingFinished = true;
   loadingBar.style.width = '100%';
   loadingStatus.textContent = 'Siap — 100%';
-  setTimeout(() => loadingScreen.classList.add('done'), 220);
+  setTimeout(() => loadingScreen.classList.add('done'), 200);
 };
 
 loadingManager.onProgress = (_url, loaded, total) => {
   const pct = total > 0 ? Math.min(99, Math.round((loaded / total) * 100)) : 50;
   loadingBar.style.width = `${Math.max(12, pct)}%`;
-  loadingStatus.textContent = `Memuat anatomi 3D — ${pct}%`;
+  loadingStatus.textContent = `Memuat anatomi MRI 3D — ${pct}%`;
 };
 loadingManager.onLoad = () => finishLoading();
 loadingManager.onError = () => finishLoading();
-// Safety guard in case an asset stalls on slow public connections
 setTimeout(() => finishLoading(), 6500);
 
 // ============================================================================
-// 1. Initialize 3D Stage, Subsystems & Persistent Store
+// 1. Initialize 1:1 MRI 3D Studio Stage & Subsystems
 // ============================================================================
 const container = document.getElementById('canvas-container');
 const labelsLayer = document.getElementById('labels-layer');
@@ -95,7 +94,7 @@ const initialLetter = initialHurufParam
 const state = {
   activeLetter: initialLetter,
   activeFilter: 'all',
-  activeTab: 'learn', // 'learn' | 'quiz'
+  activeTab: 'learn', // 'learn' | 'controls' | 'quiz'
   autoCamera: savedPrefs.autoCamera,
   slowMotion: false,
   viewMode: savedPrefs.viewMode,
@@ -110,7 +109,6 @@ const elToast = document.getElementById('toast');
 const elFilters = document.getElementById('makhraj-filters');
 const elStrip = document.getElementById('hijaiyah-strip');
 const elChar = document.getElementById('active-char');
-const elGlyphWrap = document.getElementById('letter-glyph-wrap');
 const elPhonetic = document.getElementById('active-phonetic');
 const elBadge = document.getElementById('active-makhraj-badge');
 const elSubMakhraj = document.getElementById('active-submakhraj');
@@ -138,8 +136,15 @@ const btnFocus3D = document.getElementById('btn-focus-3d');
 const btnShare = document.getElementById('btn-share');
 const btnResetProgress = document.getElementById('btn-reset-progress');
 
+// Studio Quick-Dissection Bar (Desktop Bottom-Left)
+const qbtnSkull = document.getElementById('qbtn-skull');
+const qbtnAirflow = document.getElementById('qbtn-airflow');
+const qbtnLabels = document.getElementById('qbtn-labels');
+const qbtnSlice = document.getElementById('qbtn-slice');
+
 const tabButtons = document.querySelectorAll('.panel-tabs button');
 const viewLearn = document.getElementById('view-learn');
+const viewControls = document.getElementById('view-controls');
 const viewQuiz = document.getElementById('view-quiz');
 
 // Quiz elements
@@ -156,11 +161,17 @@ const elQCorrect = document.getElementById('q-stat-correct');
 const elQTotal = document.getElementById('q-stat-total');
 const elQStreak = document.getElementById('q-stat-streak');
 
-// X-Ray & Camera elements
+// Controls & Layer Dissection elements
 const sliderCutaway = document.getElementById('slider-cutaway');
 const valCutaway = document.getElementById('val-cutaway');
 const sliderOpacity = document.getElementById('slider-opacity');
 const valOpacity = document.getElementById('val-opacity');
+
+const chkLayerSkull = document.getElementById('chk-layer-skull');
+const chkLayerJaw = document.getElementById('chk-layer-jaw');
+const chkLayerPharynx = document.getElementById('chk-layer-pharynx');
+const chkLayerNasal = document.getElementById('chk-layer-nasal');
+const chkLayerTongue = document.getElementById('chk-layer-tongue');
 
 const chkAirflow = document.getElementById('chk-airflow');
 const chkLabels = document.getElementById('chk-labels');
@@ -223,7 +234,7 @@ function renderFilterPills() {
       const match = HIJAIYAH_LETTERS.find(
         (l) => l.makhraj === cat.id || l.secondaryMakhraj === cat.id
       );
-      if (match && state.activeTab === 'learn') {
+      if (match && state.activeTab !== 'quiz') {
         selectLetter(match, { playAudio: false });
       }
     };
@@ -246,9 +257,7 @@ function renderHijaiyahDock() {
       <span class="tile-latin">${letter.phonetic.split(' ')[0]}</span>
     `;
     btn.onclick = () => {
-      if (state.activeTab === 'quiz') {
-        switchTab('learn');
-      }
+      if (state.activeTab === 'quiz') switchTab('learn');
       selectLetter(letter, { playAudio: true });
     };
     elStrip.appendChild(btn);
@@ -302,7 +311,7 @@ function renderCompareButtons(activeLetter) {
 }
 
 // ============================================================================
-// 5. Core Letter Selection, Deep-Link & Pronunciation Sync
+// 5. Core Letter Selection, Dissection Sync & Pronunciation
 // ============================================================================
 function updateCutawayUI(xVal, persist = true) {
   state.clipX = xVal;
@@ -312,9 +321,13 @@ function updateCutawayUI(xVal, persist = true) {
     (state.viewMode === 'xray-cut' || state.viewMode === 'solid-cut') && xVal < 0.75;
   vocalTract.setCutaway(enableInternalCut, xVal);
 
-  if (xVal <= 0.12) valCutaway.textContent = 'Sagital (Tengah)';
+  const isSagittal = xVal <= 0.14;
+  if (isSagittal) valCutaway.textContent = 'Sagital (Tengah)';
   else if (xVal >= 1.1) valCutaway.textContent = 'Utuh';
   else valCutaway.textContent = `${Math.round(((xVal + 0.35) / 1.8) * 100)}%`;
+
+  qbtnSlice.classList.toggle('active', isSagittal);
+  qbtnSlice.textContent = isSagittal ? 'Sagital' : 'Utuh';
 
   if (persist) store.updatePref('clipX', xVal);
 }
@@ -332,7 +345,7 @@ function syncUrlDeepLink(letterId) {
     url.searchParams.set('huruf', letterId);
     window.history.replaceState({}, '', url);
   } catch {
-    // Ignore history API errors in restricted contexts
+    // Ignore history API errors
   }
 }
 
@@ -347,7 +360,7 @@ function applyLetterTo3D(letter, { triggerPulse = false, concealLabels = false }
     cat.color
   );
 
-  // Preserve user's camera angle, cutaway slice, X-Ray opacity & view mode across letters.
+  // Preserve user's camera angle, cutaway slice, X-Ray opacity & layers across letters!
   if (state.autoCamera) {
     setActiveCamPreset(letter.cameraPreset || 'side');
   }
@@ -361,20 +374,15 @@ function selectLetter(letter, { playAudio = false, updateUrl = true } = {}) {
   if (updateUrl) syncUrlDeepLink(letter.id);
 
   elChar.textContent = letter.char;
-  elGlyphWrap.style.background = '#171717';
-  elGlyphWrap.style.borderColor = 'rgba(255, 255, 255, 0.24)';
   elPhonetic.textContent = letter.phonetic;
   elBadge.textContent = letter.secondaryMakhraj
     ? `${cat.name} + Khaisyum`
     : cat.name;
-  elBadge.style.background = 'rgba(255, 255, 255, 0.08)';
-  elBadge.style.color = '#f5f5f5';
 
   elSubMakhraj.textContent = letter.subMakhraj;
   elHowTo.textContent = letter.howTo;
   elMistake.textContent = letter.mistakeWarning;
 
-  // Update mobile quickbar
   elMobileChar.textContent = letter.char;
   elMobilePhonetic.textContent = letter.phonetic;
   elMobileMakhraj.textContent = cat.name;
@@ -399,7 +407,7 @@ function selectLetter(letter, { playAudio = false, updateUrl = true } = {}) {
 function triggerPronounce(letter = state.activeLetter) {
   controller.triggerPronunciation();
   btnPlay.classList.add('playing');
-  if (state.activeTab === 'learn') {
+  if (state.activeTab !== 'quiz') {
     store.markLearned(letter.id);
     updateProgressUI();
   }
@@ -415,7 +423,7 @@ function triggerPronounce(letter = state.activeLetter) {
 }
 
 // ============================================================================
-// 6. Interactive Quiz Mode (Belajar <-> Latihan Kuis)
+// 6. Interactive Quiz Mode
 // ============================================================================
 function updateQuizStatsUI() {
   const stats = store.getQuizStats();
@@ -428,7 +436,6 @@ function loadNextQuizQuestion(playSound = true) {
   const q = quizManager.nextQuestion();
   state.activeLetter = q.letter;
 
-  // Animate 3D vocal tract for the mystery letter while concealing answer hints in 'letter' mode
   applyLetterTo3D(q.letter, {
     triggerPulse: true,
     concealLabels: q.mode === 'letter',
@@ -452,7 +459,6 @@ function loadNextQuizQuestion(playSound = true) {
     elQuizOptions.appendChild(btn);
   });
 
-  // Update mobile summary neutrally during mystery mode
   elMobileChar.textContent = q.mode === 'letter' ? '?' : q.letter.char;
   elMobilePhonetic.textContent = q.mode === 'letter' ? 'Kuis Tebak Huruf' : q.letter.phonetic;
   elMobileMakhraj.textContent = 'Mode Latihan';
@@ -477,7 +483,6 @@ function handleQuizAnswer(selectedValue) {
   updateQuizStatsUI();
   updateProgressUI();
 
-  // Reveal letter & organ labels now that answer is submitted
   elQuizMystery.textContent = letter.char;
   anatomicalLabels.setLetter(letter);
   updateDockFilter();
@@ -503,6 +508,7 @@ function handleQuizAnswer(selectedValue) {
 }
 
 function switchTab(tabName) {
+  const prevTab = state.activeTab;
   state.activeTab = tabName;
   tabButtons.forEach((b) => {
     const active = b.dataset.tab === tabName;
@@ -511,18 +517,19 @@ function switchTab(tabName) {
   });
 
   viewLearn.classList.toggle('hidden', tabName !== 'learn');
+  viewControls.classList.toggle('hidden', tabName !== 'controls');
   viewQuiz.classList.toggle('hidden', tabName !== 'quiz');
 
   if (tabName === 'quiz') {
     updateQuizStatsUI();
     loadNextQuizQuestion(true);
-  } else {
+  } else if (prevTab === 'quiz') {
     selectLetter(state.activeLetter, { playAudio: false });
   }
 }
 
 // ============================================================================
-// 7. Wire Up Controls, Mobile Drawer, Sharing & Keyboard Shortcuts
+// 7. Wire Up Tabs, Layer Dissection, Studio Quick-Bar & Shortcuts
 // ============================================================================
 tabButtons.forEach((btn) => {
   btn.addEventListener('click', () => switchTab(btn.dataset.tab));
@@ -613,6 +620,27 @@ function applyViewMode(mode, persist = true) {
   if (persist) store.updatePref('viewMode', mode);
 }
 
+function setSkullLayer(visible, persist = true) {
+  chkLayerSkull.checked = visible;
+  vocalTract.setLayerVisible('skull', visible);
+  qbtnSkull.classList.toggle('active', visible);
+  if (persist) store.updatePref('layerSkull', visible);
+}
+
+function setAirflowVisible(visible, persist = true) {
+  chkAirflow.checked = visible;
+  airflow.setVisible(visible);
+  qbtnAirflow.classList.toggle('active', visible);
+  if (persist) store.updatePref('showAirflow', visible);
+}
+
+function setLabelsVisible(visible, persist = true) {
+  chkLabels.checked = visible;
+  anatomicalLabels.setVisible(visible);
+  qbtnLabels.classList.toggle('active', visible);
+  if (persist) store.updatePref('showLabels', visible);
+}
+
 viewModeButtons.forEach((btn) => {
   btn.addEventListener('click', () => applyViewMode(btn.dataset.mode, true));
 });
@@ -629,35 +657,51 @@ sliderOpacity.addEventListener('input', (e) => {
   store.updatePref('opacity', v);
 });
 
-chkAirflow.addEventListener('change', (e) => {
-  airflow.setVisible(e.target.checked);
-  store.updatePref('showAirflow', e.target.checked);
+// Anatomical Layer Dissection Toggles
+chkLayerSkull.addEventListener('change', (e) => setSkullLayer(e.target.checked, true));
+chkLayerJaw.addEventListener('change', (e) => {
+  vocalTract.setLayerVisible('jaw', e.target.checked);
+  store.updatePref('layerJaw', e.target.checked);
+});
+chkLayerPharynx.addEventListener('change', (e) => {
+  vocalTract.setLayerVisible('pharynx', e.target.checked);
+  store.updatePref('layerPharynx', e.target.checked);
+});
+chkLayerNasal.addEventListener('change', (e) => {
+  vocalTract.setLayerVisible('nasal', e.target.checked);
+  store.updatePref('layerNasal', e.target.checked);
+});
+chkLayerTongue.addEventListener('change', (e) => {
+  tongue.setVisible(e.target.checked);
+  store.updatePref('layerTongue', e.target.checked);
 });
 
-chkLabels.addEventListener('change', (e) => {
-  anatomicalLabels.setVisible(e.target.checked);
-  store.updatePref('showLabels', e.target.checked);
+// Bottom-left Quick-Dissection Buttons
+qbtnSkull.addEventListener('click', () => setSkullLayer(!chkLayerSkull.checked, true));
+qbtnAirflow.addEventListener('click', () => setAirflowVisible(!chkAirflow.checked, true));
+qbtnLabels.addEventListener('click', () => setLabelsVisible(!chkLabels.checked, true));
+qbtnSlice.addEventListener('click', () => {
+  const currentlySagittal = state.clipX <= 0.14;
+  updateCutawayUI(currentlySagittal ? 1.25 : 0.04, true);
 });
 
+chkAirflow.addEventListener('change', (e) => setAirflowVisible(e.target.checked, true));
+chkLabels.addEventListener('change', (e) => setLabelsVisible(e.target.checked, true));
 chkAutoCam.addEventListener('change', (e) => {
   state.autoCamera = e.target.checked;
   store.updatePref('autoCamera', e.target.checked);
 });
-
 chkBloom.addEventListener('change', (e) => {
   sceneManager.setBloomEnabled(e.target.checked);
   store.updatePref('bloom', e.target.checked);
 });
-
 chkSimpleHead.addEventListener('change', (e) => {
   outerHead.setModelStyle(e.target.checked);
   store.updatePref('simpleHead', e.target.checked);
 });
 
 camPresetButtons.forEach((btn) => {
-  btn.addEventListener('click', () => {
-    setActiveCamPreset(btn.dataset.preset);
-  });
+  btn.addEventListener('click', () => setActiveCamPreset(btn.dataset.preset));
 });
 
 btnInfoModal.addEventListener('click', () => infoModal.classList.remove('hidden'));
@@ -688,24 +732,28 @@ window.addEventListener('keydown', (e) => {
 });
 
 // ============================================================================
-// 8. Restore Saved Preferences, Boot & Real-Time Render Loop
+// 8. Restore Saved Preferences, Boot & Render Loop
 // ============================================================================
 function restoreSavedPreferences() {
   sliderOpacity.value = savedPrefs.opacity;
   valOpacity.textContent = `${Math.round(savedPrefs.opacity * 100)}%`;
   outerHead.setOpacity(savedPrefs.opacity);
 
-  chkAirflow.checked = savedPrefs.showAirflow;
-  airflow.setVisible(savedPrefs.showAirflow);
+  setSkullLayer(savedPrefs.layerSkull, false);
+  chkLayerJaw.checked = savedPrefs.layerJaw;
+  vocalTract.setLayerVisible('jaw', savedPrefs.layerJaw);
+  chkLayerPharynx.checked = savedPrefs.layerPharynx;
+  vocalTract.setLayerVisible('pharynx', savedPrefs.layerPharynx);
+  chkLayerNasal.checked = savedPrefs.layerNasal;
+  vocalTract.setLayerVisible('nasal', savedPrefs.layerNasal);
+  chkLayerTongue.checked = savedPrefs.layerTongue;
+  tongue.setVisible(savedPrefs.layerTongue);
 
-  chkLabels.checked = savedPrefs.showLabels;
-  anatomicalLabels.setVisible(savedPrefs.showLabels);
-
+  setAirflowVisible(savedPrefs.showAirflow, false);
+  setLabelsVisible(savedPrefs.showLabels, false);
   chkAutoCam.checked = savedPrefs.autoCamera;
-
   chkBloom.checked = savedPrefs.bloom;
   sceneManager.setBloomEnabled(savedPrefs.bloom);
-
   chkSimpleHead.checked = savedPrefs.simpleHead;
   outerHead.setModelStyle(savedPrefs.simpleHead);
 

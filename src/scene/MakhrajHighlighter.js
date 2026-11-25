@@ -67,9 +67,9 @@ export class MakhrajHighlighter {
       return { container, sphere, ring, ringMat };
     };
 
-    this.primary = makeBeacon(this.primaryUniforms, 0.105);
-    this.mirrorDhad = makeBeacon(this.primaryUniforms, 0.095);
-    this.secondary = makeBeacon(this.secondaryUniforms, 0.115);
+    this.primary = makeBeacon(this.primaryUniforms, 0.078);
+    this.mirrorDhad = makeBeacon(this.primaryUniforms, 0.074);
+    this.secondary = makeBeacon(this.secondaryUniforms, 0.086);
 
     this.group.add(this.primary.container, this.mirrorDhad.container, this.secondary.container);
     this.mirrorDhad.container.visible = false;
@@ -95,7 +95,7 @@ export class MakhrajHighlighter {
     this._showSecondary = letter.secondaryMakhraj === 'alkhaisyum';
     this.secondary.container.visible = this._showSecondary;
     if (this._showSecondary) {
-      this.secondary.container.position.set(0, 0.56, 0.34);
+      this.secondary.container.position.set(0, 0.60, 0.46);
     }
   }
 
