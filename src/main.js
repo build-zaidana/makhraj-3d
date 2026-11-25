@@ -5,6 +5,7 @@ import {
   MAKHRAJ_CATEGORIES,
   CONFUSION_PAIRS,
   getLetterById,
+  getSifatExplanation,
 } from './data/hijaiyahData.js';
 import { SceneManager } from './scene/SceneManager.js';
 import { OuterHeadShell } from './scene/OuterHeadShell.js';
@@ -54,7 +55,7 @@ const finishLoading = () => {
 loadingManager.onProgress = (_url, loaded, total) => {
   const pct = total > 0 ? Math.min(99, Math.round((loaded / total) * 100)) : 50;
   loadingBar.style.width = `${Math.max(12, pct)}%`;
-  loadingStatus.textContent = `Memuat anatomi MRI 3D — ${pct}%`;
+  loadingStatus.textContent = `Memuat anatomi organ bicara 3D — ${pct}%`;
 };
 loadingManager.onLoad = () => finishLoading();
 loadingManager.onError = () => finishLoading();
@@ -97,10 +98,13 @@ const state = {
   activeTab: 'learn', // 'learn' | 'controls' | 'quiz'
   autoCamera: savedPrefs.autoCamera,
   slowMotion: false,
+  loopPractice: false,
   viewMode: savedPrefs.viewMode,
   clipX: savedPrefs.clipX,
   opacity: savedPrefs.opacity,
 };
+
+let loopTimer = null;
 
 // ============================================================================
 // 3. DOM Elements
@@ -110,9 +114,12 @@ const elFilters = document.getElementById('makhraj-filters');
 const elStrip = document.getElementById('hijaiyah-strip');
 const elChar = document.getElementById('active-char');
 const elPhonetic = document.getElementById('active-phonetic');
+const elActiveIndex = document.getElementById('active-index');
 const elBadge = document.getElementById('active-makhraj-badge');
-const elSubMakhraj = document.getElementById('active-submakhraj');
 const elSifat = document.getElementById('active-sifat');
+const elSifatDef = document.getElementById('sifat-def');
+const elOrganMover = document.getElementById('organ-mover');
+const elOrganTarget = document.getElementById('organ-target');
 const elHowTo = document.getElementById('active-howto');
 const elMistake = document.getElementById('active-mistake');
 const elComparePairs = document.getElementById('compare-pairs');
@@ -129,18 +136,22 @@ const btnMobileDrawer = document.getElementById('btn-mobile-drawer');
 const btnCloseDrawer = document.getElementById('btn-close-drawer');
 
 const btnPlay = document.getElementById('btn-play');
+const btnLoop = document.getElementById('btn-loop');
 const btnSlowMo = document.getElementById('btn-slowmo');
+const btnHeroPrev = document.getElementById('btn-hero-prev');
+const btnHeroNext = document.getElementById('btn-hero-next');
 const btnPrev = document.getElementById('btn-prev-letter');
 const btnNext = document.getElementById('btn-next-letter');
+const btnLetterGrid = document.getElementById('btn-letter-grid');
 const btnFocus3D = document.getElementById('btn-focus-3d');
 const btnShare = document.getElementById('btn-share');
 const btnResetProgress = document.getElementById('btn-reset-progress');
 
-// Studio Quick-Dissection Bar (Desktop Bottom-Left)
-const qbtnSkull = document.getElementById('qbtn-skull');
+// Studio Quick-Bar (Desktop Bottom-Left)
+const qbtnFocus = document.getElementById('qbtn-focus');
+const qbtnSlice = document.getElementById('qbtn-slice');
 const qbtnAirflow = document.getElementById('qbtn-airflow');
 const qbtnLabels = document.getElementById('qbtn-labels');
-const qbtnSlice = document.getElementById('qbtn-slice');
 
 const tabButtons = document.querySelectorAll('.panel-tabs button');
 const viewLearn = document.getElementById('view-learn');
@@ -161,13 +172,12 @@ const elQCorrect = document.getElementById('q-stat-correct');
 const elQTotal = document.getElementById('q-stat-total');
 const elQStreak = document.getElementById('q-stat-streak');
 
-// Controls & Layer Dissection elements
+// Controls & Layer Dissection elements (Makhraj-only 4 real organ layers)
 const sliderCutaway = document.getElementById('slider-cutaway');
 const valCutaway = document.getElementById('val-cutaway');
 const sliderOpacity = document.getElementById('slider-opacity');
 const valOpacity = document.getElementById('val-opacity');
 
-const chkLayerSkull = document.getElementById('chk-layer-skull');
 const chkLayerJaw = document.getElementById('chk-layer-jaw');
 const chkLayerPharynx = document.getElementById('chk-layer-pharynx');
 const chkLayerNasal = document.getElementById('chk-layer-nasal');
@@ -182,6 +192,11 @@ const chkSimpleHead = document.getElementById('chk-simple-head');
 const viewModeButtons = document.querySelectorAll('#view-mode-buttons button');
 const camPresetButtons = document.querySelectorAll('#cam-presets button');
 
+// Modals
+const gridModal = document.getElementById('grid-modal');
+const gridBody = document.getElementById('makhraj-grid-body');
+const btnCloseGrid = document.getElementById('btn-close-grid');
+
 const infoModal = document.getElementById('info-modal');
 const btnInfoModal = document.getElementById('btn-info-modal');
 const btnCloseModal = document.getElementById('btn-close-modal');
@@ -195,7 +210,41 @@ function showToast(msg) {
 }
 
 // ============================================================================
-// 4. Progress, Filters & 29-Letter Hijaiyah Dock
+// 4. Practice Loop Controller (Hands-Free Pronunciation Mirroring)
+// ============================================================================
+function stopPracticeLoop() {
+  state.loopPractice = false;
+  btnLoop.classList.remove('active');
+  clearTimeout(loopTimer);
+  loopTimer = null;
+}
+
+function scheduleNextLoop() {
+  clearTimeout(loopTimer);
+  if (!state.loopPractice || state.activeTab === 'quiz') return;
+  const delay = state.slowMotion ? 3400 : 2250;
+  loopTimer = setTimeout(() => {
+    if (!state.loopPractice || state.activeTab === 'quiz') return;
+    triggerPronounce(state.activeLetter);
+    scheduleNextLoop();
+  }, delay);
+}
+
+function togglePracticeLoop() {
+  if (state.loopPractice) {
+    stopPracticeLoop();
+    showToast('Mode ulang dimatikan');
+  } else {
+    state.loopPractice = true;
+    btnLoop.classList.add('active');
+    triggerPronounce(state.activeLetter);
+    scheduleNextLoop();
+    showToast(`Mengulang huruf ${state.activeLetter.phonetic} secara berkala`);
+  }
+}
+
+// ============================================================================
+// 5. Progress, Filters, 29-Letter Dock & 5-Makhraj Visual Grid Overlay
 // ============================================================================
 function updateProgressUI() {
   const count = store.getLearnedCount();
@@ -264,6 +313,52 @@ function renderHijaiyahDock() {
   });
 }
 
+function renderMakhrajGridModal() {
+  gridBody.innerHTML = '';
+  Object.values(MAKHRAJ_CATEGORIES).forEach((cat) => {
+    const letters = HIJAIYAH_LETTERS.filter(
+      (l) => l.makhraj === cat.id || l.secondaryMakhraj === cat.id
+    );
+    const group = document.createElement('section');
+    group.className = 'grid-group';
+    group.innerHTML = `
+      <div class="grid-group-head">
+        <div class="grid-group-title">
+          <strong>${cat.name}</strong>
+          <span class="ar-sub">${cat.arabic}</span>
+        </div>
+        <small>${cat.subtitle} · ${letters.length} huruf</small>
+      </div>
+    `;
+    const tiles = document.createElement('div');
+    tiles.className = 'grid-tiles';
+    letters.forEach((letter) => {
+      const btn = document.createElement('button');
+      btn.className = 'grid-tile';
+      if (letter.id === state.activeLetter.id) btn.classList.add('active');
+      if (store.isLearned(letter.id)) btn.classList.add('learned');
+      btn.innerHTML = `
+        <span class="gt-ar">${letter.char}</span>
+        <span class="gt-latin">${letter.phonetic.split(' ')[0]}</span>
+      `;
+      btn.title = `${letter.phonetic} — ${letter.subMakhraj}`;
+      btn.onclick = () => {
+        gridModal.classList.add('hidden');
+        if (state.activeTab === 'quiz') switchTab('learn');
+        selectLetter(letter, { playAudio: true });
+      };
+      tiles.appendChild(btn);
+    });
+    group.appendChild(tiles);
+    gridBody.appendChild(group);
+  });
+}
+
+function openMakhrajGridModal() {
+  renderMakhrajGridModal();
+  gridModal.classList.remove('hidden');
+}
+
 function updateDockFilter() {
   const hideActiveInQuiz =
     state.activeTab === 'quiz' &&
@@ -311,7 +406,7 @@ function renderCompareButtons(activeLetter) {
 }
 
 // ============================================================================
-// 5. Core Letter Selection, Dissection Sync & Pronunciation
+// 6. Core Letter Selection, Dissection Sync & Pronunciation
 // ============================================================================
 function updateCutawayUI(xVal, persist = true) {
   state.clipX = xVal;
@@ -367,6 +462,7 @@ function applyLetterTo3D(letter, { triggerPulse = false, concealLabels = false }
 }
 
 function selectLetter(letter, { playAudio = false, updateUrl = true } = {}) {
+  stopPracticeLoop();
   state.activeLetter = letter;
   const cat = MAKHRAJ_CATEGORIES[letter.makhraj];
 
@@ -375,11 +471,15 @@ function selectLetter(letter, { playAudio = false, updateUrl = true } = {}) {
 
   elChar.textContent = letter.char;
   elPhonetic.textContent = letter.phonetic;
+  elActiveIndex.textContent = `${letter.order} / ${HIJAIYAH_LETTERS.length}`;
   elBadge.textContent = letter.secondaryMakhraj
     ? `${cat.name} + Khaisyum`
     : cat.name;
 
-  elSubMakhraj.textContent = letter.subMakhraj;
+  const pair = letter.organPair || ['Organ Aktif', letter.subMakhraj];
+  elOrganMover.textContent = pair[0];
+  elOrganTarget.textContent = pair[1];
+
   elHowTo.textContent = letter.howTo;
   elMistake.textContent = letter.mistakeWarning;
 
@@ -387,9 +487,30 @@ function selectLetter(letter, { playAudio = false, updateUrl = true } = {}) {
   elMobilePhonetic.textContent = letter.phonetic;
   elMobileMakhraj.textContent = cat.name;
 
-  elSifat.innerHTML = letter.sifat
-    .map((s) => `<span class="sifat-chip">${s}</span>`)
-    .join('');
+  // Interactive plain-language Sifatul Huruf chips (click or hover for meaning!)
+  elSifat.innerHTML = '';
+  elSifatDef.classList.add('hidden');
+  elSifatDef.innerHTML = '';
+  letter.sifat.forEach((s) => {
+    const explanation = getSifatExplanation(s);
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'sifat-chip';
+    chip.textContent = s;
+    chip.title = `${s}: ${explanation}`;
+    chip.onclick = () => {
+      const wasActive = chip.classList.contains('active');
+      elSifat.querySelectorAll('.sifat-chip').forEach((c) => c.classList.remove('active'));
+      if (wasActive) {
+        elSifatDef.classList.add('hidden');
+      } else {
+        chip.classList.add('active');
+        elSifatDef.innerHTML = `<strong>${s}:</strong> ${explanation}`;
+        elSifatDef.classList.remove('hidden');
+      }
+    };
+    elSifat.appendChild(chip);
+  });
 
   renderCompareButtons(letter);
   updateDockFilter();
@@ -423,7 +544,7 @@ function triggerPronounce(letter = state.activeLetter) {
 }
 
 // ============================================================================
-// 6. Interactive Quiz Mode
+// 7. Interactive Quiz Mode
 // ============================================================================
 function updateQuizStatsUI() {
   const stats = store.getQuizStats();
@@ -433,6 +554,7 @@ function updateQuizStatsUI() {
 }
 
 function loadNextQuizQuestion(playSound = true) {
+  stopPracticeLoop();
   const q = quizManager.nextQuestion();
   state.activeLetter = q.letter;
 
@@ -521,6 +643,7 @@ function switchTab(tabName) {
   viewQuiz.classList.toggle('hidden', tabName !== 'quiz');
 
   if (tabName === 'quiz') {
+    stopPracticeLoop();
     updateQuizStatsUI();
     loadNextQuizQuestion(true);
   } else if (prevTab === 'quiz') {
@@ -529,7 +652,7 @@ function switchTab(tabName) {
 }
 
 // ============================================================================
-// 7. Wire Up Tabs, Layer Dissection, Studio Quick-Bar & Shortcuts
+// 8. Wire Up Tabs, Layer Dissection, Quick-Bar, Grid & Shortcuts
 // ============================================================================
 tabButtons.forEach((btn) => {
   btn.addEventListener('click', () => switchTab(btn.dataset.tab));
@@ -552,6 +675,8 @@ btnQuizReplay.addEventListener('click', () => {
 btnQuizNext.addEventListener('click', () => loadNextQuizQuestion(true));
 
 btnPlay.addEventListener('click', () => triggerPronounce());
+btnLoop.addEventListener('click', () => togglePracticeLoop());
+
 btnMobilePlay.addEventListener('click', () => {
   if (state.activeTab === 'quiz' && quizManager.currentQuestion) {
     controller.triggerPronunciation();
@@ -575,6 +700,7 @@ btnSlowMo.addEventListener('click', () => {
   state.slowMotion = !state.slowMotion;
   btnSlowMo.classList.toggle('active', state.slowMotion);
   controller.setSlowMotion(state.slowMotion);
+  if (state.loopPractice) scheduleNextLoop();
 });
 
 btnFocus3D.addEventListener('click', () => {
@@ -607,8 +733,18 @@ const stepLetter = (delta) => {
   selectLetter(HIJAIYAH_LETTERS[nextIdx], { playAudio: true });
 };
 
+// In RTL Arabic dock, left arrow advances forward (order +1), right arrow goes back (order -1)
 btnPrev.addEventListener('click', () => stepLetter(1));
 btnNext.addEventListener('click', () => stepLetter(-1));
+// In Panduan hero card (LTR Indonesian reading), left = previous order (-1), right = next order (+1)
+btnHeroPrev.addEventListener('click', () => stepLetter(-1));
+btnHeroNext.addEventListener('click', () => stepLetter(1));
+
+btnLetterGrid.addEventListener('click', openMakhrajGridModal);
+btnCloseGrid.addEventListener('click', () => gridModal.classList.add('hidden'));
+gridModal.addEventListener('click', (e) => {
+  if (e.target === gridModal) gridModal.classList.add('hidden');
+});
 
 function applyViewMode(mode, persist = true) {
   state.viewMode = mode;
@@ -618,13 +754,6 @@ function applyViewMode(mode, persist = true) {
   const internalCut = (mode === 'xray-cut' || mode === 'solid-cut') && state.clipX < 0.75;
   vocalTract.setCutaway(internalCut, state.clipX);
   if (persist) store.updatePref('viewMode', mode);
-}
-
-function setSkullLayer(visible, persist = true) {
-  chkLayerSkull.checked = visible;
-  vocalTract.setLayerVisible('skull', visible);
-  qbtnSkull.classList.toggle('active', visible);
-  if (persist) store.updatePref('layerSkull', visible);
 }
 
 function setAirflowVisible(visible, persist = true) {
@@ -657,8 +786,7 @@ sliderOpacity.addEventListener('input', (e) => {
   store.updatePref('opacity', v);
 });
 
-// Anatomical Layer Dissection Toggles
-chkLayerSkull.addEventListener('change', (e) => setSkullLayer(e.target.checked, true));
+// Anatomical Layer Dissection Toggles (Makhraj organs only)
 chkLayerJaw.addEventListener('change', (e) => {
   vocalTract.setLayerVisible('jaw', e.target.checked);
   store.updatePref('layerJaw', e.target.checked);
@@ -676,8 +804,12 @@ chkLayerTongue.addEventListener('change', (e) => {
   store.updatePref('layerTongue', e.target.checked);
 });
 
-// Bottom-left Quick-Dissection Buttons
-qbtnSkull.addEventListener('click', () => setSkullLayer(!chkLayerSkull.checked, true));
+// Bottom-left Quick-Bar
+qbtnFocus.addEventListener('click', () => {
+  const preset = state.activeLetter?.cameraPreset || 'side';
+  setActiveCamPreset(preset);
+  showToast(`Kamera diarahkan ke titik makhraj ${state.activeLetter.phonetic}`);
+});
 qbtnAirflow.addEventListener('click', () => setAirflowVisible(!chkAirflow.checked, true));
 qbtnLabels.addEventListener('click', () => setLabelsVisible(!chkLabels.checked, true));
 qbtnSlice.addEventListener('click', () => {
@@ -724,7 +856,12 @@ window.addEventListener('keydown', (e) => {
     stepLetter(1);
   } else if (e.code === 'ArrowRight') {
     stepLetter(-1);
+  } else if (e.key === 'g' || e.key === 'G') {
+    if (gridModal.classList.contains('hidden')) openMakhrajGridModal();
+    else gridModal.classList.add('hidden');
   } else if (e.key === 'Escape') {
+    stopPracticeLoop();
+    gridModal.classList.add('hidden');
     infoModal.classList.add('hidden');
     document.body.classList.remove('focus-3d');
     document.body.classList.remove('mobile-sheet-open');
@@ -732,14 +869,13 @@ window.addEventListener('keydown', (e) => {
 });
 
 // ============================================================================
-// 8. Restore Saved Preferences, Boot & Render Loop
+// 9. Restore Saved Preferences, Boot & Render Loop
 // ============================================================================
 function restoreSavedPreferences() {
   sliderOpacity.value = savedPrefs.opacity;
   valOpacity.textContent = `${Math.round(savedPrefs.opacity * 100)}%`;
   outerHead.setOpacity(savedPrefs.opacity);
 
-  setSkullLayer(savedPrefs.layerSkull, false);
   chkLayerJaw.checked = savedPrefs.layerJaw;
   vocalTract.setLayerVisible('jaw', savedPrefs.layerJaw);
   chkLayerPharynx.checked = savedPrefs.layerPharynx;

@@ -14,6 +14,7 @@ const POSE_KEYS = [
   'bladeY',
   'midY',
   'backY',
+  'backZ',
   'sideLift',
   'curl',
   'groove',
@@ -30,6 +31,7 @@ const REST_POSE = {
   bladeY: -0.03,
   midY: -0.02,
   backY: -0.03,
+  backZ: 0.0,
   sideLift: 0.0,
   curl: 0.0,
   groove: 0.0,
@@ -90,16 +92,16 @@ export class ArticulationController {
         // Brief preparatory opening from rest so student clearly sees the movement trajectory!
         emphasis = THREE.MathUtils.lerp(1.0, 0.25, p / 0.20);
       } else if (p < 0.52) {
-        // Move cleanly into target Makhraj articulation contact!
+        // Move cleanly into target Makhraj articulation contact without overshooting enamel!
         const t = (p - 0.20) / 0.32;
         const ease = 1 - Math.pow(1 - t, 3);
-        emphasis = THREE.MathUtils.lerp(0.25, 1.12, ease);
+        emphasis = THREE.MathUtils.lerp(0.25, 1.03, ease);
       } else if (p < 0.82) {
         // Hold peak contact pose cleanly for visual inspection
-        emphasis = 1.08;
+        emphasis = 1.02;
       } else if (p < 1.0) {
         const t = (p - 0.82) / 0.18;
-        emphasis = THREE.MathUtils.lerp(1.08, 1.0, t);
+        emphasis = THREE.MathUtils.lerp(1.02, 1.0, t);
       } else {
         this._pulseActive = false;
         emphasis = 1.0;

@@ -8,18 +8,14 @@ import {
 } from './TextureGenerator.js';
 
 /**
- * VocalTract — 1:1 MRI-Registered Real Human Anatomy Atlas (BodyParts3D / OrganUI, CC BY-SA 2.1)
+ * VocalTract — 1:1 MRI-Registered Makharijul Huruf Anatomy Atlas (BodyParts3D / OrganUI, CC BY-SA 2.1)
  *
- * Loads a single pre-registered, stripped 1:1 anatomical assembly (`anatomy_head_1to1.glb`,
- * 78 curated real human MRI meshes) with true millimeter registration across:
- *   1. Cranium & Cervical Spine C1-C6 + Intervertebral Discs (toggleable skeletal layer)
- *   2. 28 Individual Porcelain-Enamel Teeth, Gingiva, Maxillae, Palatine Bone & Articulated Mandible
- *   3. Real Al-Khaisyum (Nasal Cavity, Inferior Conchae, Vomer, Nasopharynx, Nasal Cartilages)
- *   4. Real Pharynx Muscular Wall (Superior/Middle/Inferior Constrictors, Raphe, Musculus Uvulae!)
- *   5. Real Larynx (Hyoid Bone, Thyroid/Cricoid/Arytenoid Cartilages, Epiglottis, Vocal Folds, Trachea)
- *
- * ZERO fake pink plastic tubes — every organ is genuine MRI human anatomy shaded with
- * real-time Subsurface Scattering (SSS), cortical bone micro-grain, and Studio PBR clearcoat.
+ * Loads a clean, focused 1:1 anatomical assembly (`anatomy_head_1to1.glb`, 54 curated MRI meshes)
+ * containing EXCLUSIVELY the organs directly involved in Makharijul Huruf (zero cranium/spine clutter):
+ *   1. 28 Individual Porcelain-Enamel Teeth, Gingiva, Hard Palate (Palatine Bone) & Articulated TMJ Mandible
+ *   2. Real Al-Khaisyum (Nasal Cavity, Inferior Conchae, Vomer, Nasopharynx, Nasal Cartilages)
+ *   3. Real Pharynx Muscular Wall (Superior/Middle/Inferior Constrictors, Raphe, Levator Veli Palatini, Musculus Uvulae)
+ *   4. Real Larynx (Hyoid Bone, Thyroid/Cricoid/Arytenoid Cartilages, Epiglottis, Vocal Folds, Trachea)
  */
 
 export class VocalTract {
@@ -30,20 +26,19 @@ export class VocalTract {
 
     // Interactive sagittal cutaway plane (slices near +X side open cleanly)
     this.sagittalClipPlane = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0.08);
-    // Clean bottom cutoff above the studio pedestal (keeps trachea & C6 crisp inside neck)
+    // Clean bottom cutoff above the studio pedestal (keeps trachea crisp inside neck)
     this.bottomClipPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 1.06);
     this.cutawayEnabled = true;
 
-    // Layer Dissection Groups (like Complete Anatomy!)
+    // Focused Makharijul Huruf Layer Dissection Groups
     this.layers = {
-      skull: new THREE.Group(),
       jaw: new THREE.Group(),
       nasal: new THREE.Group(),
       pharynx: new THREE.Group(),
     };
-    this.group.add(this.layers.skull, this.layers.jaw, this.layers.nasal, this.layers.pharynx);
+    this.group.add(this.layers.jaw, this.layers.nasal, this.layers.pharynx);
 
-    // Exact 1:1 MRI TMJ condyle hinge pivot from registered mandible (`Ymax=0.696, Zmin=-0.445`)
+    // Exact 1:1 MRI TMJ condyle hinge pivot from registered mandible
     this.jawPivot = new THREE.Group();
     this.jawPivot.position.set(0, 0.65, -0.38);
     this.layers.jaw.add(this.jawPivot);
@@ -97,7 +92,7 @@ export class VocalTract {
       { color: '#c82d46', intensity: 0.42, power: 2.3, wrap: 0.45 }
     );
 
-    // 3. Sculpted Cortical Bone (Mandible, Hyoid, Spine C1-C6, Palatine)
+    // 3. Sculpted Cortical Bone (Mandible, Hyoid, Palatine, Vomer)
     const boneSolidClipped = new THREE.MeshPhysicalMaterial({
       color: '#d8cfc0',
       normalMap: boneTex.normalMap,
@@ -107,39 +102,6 @@ export class VocalTract {
       clearcoat: 0.08,
       clippingPlanes: [this.sagittalClipPlane, this.bottomClipPlane],
       clipShadows: true,
-      side: THREE.DoubleSide,
-    });
-
-    // Subtle semi-translucent Cranium vault so the real skull frames the head delicately without crowding the header
-    const craniumBone = new THREE.MeshPhysicalMaterial({
-      color: '#cbc2b2',
-      normalMap: boneTex.normalMap,
-      normalScale: new THREE.Vector2(0.35, 0.35),
-      roughness: 0.58,
-      transparent: true,
-      opacity: 0.28,
-      depthWrite: false,
-      clippingPlanes: [this.sagittalClipPlane],
-      side: THREE.DoubleSide,
-    });
-
-    const maxillaTranslucent = new THREE.MeshPhysicalMaterial({
-      color: '#d5cbb9',
-      normalMap: boneTex.normalMap,
-      normalScale: new THREE.Vector2(0.35, 0.35),
-      roughness: 0.54,
-      transparent: true,
-      opacity: 0.26,
-      depthWrite: false,
-      clippingPlanes: [this.sagittalClipPlane],
-      side: THREE.DoubleSide,
-    });
-
-    const intervertebralDisc = new THREE.MeshPhysicalMaterial({
-      color: '#9e9b95',
-      roughness: 0.48,
-      clearcoat: 0.2,
-      clippingPlanes: [this.sagittalClipPlane, this.bottomClipPlane],
       side: THREE.DoubleSide,
     });
 
@@ -206,7 +168,7 @@ export class VocalTract {
       roughness: 0.22,
       clearcoat: 0.58,
       transparent: true,
-      opacity: 0.24,
+      opacity: 0.22,
       depthWrite: false,
       clippingPlanes: [this.sagittalClipPlane],
       side: THREE.DoubleSide,
@@ -228,7 +190,7 @@ export class VocalTract {
       roughness: 0.32,
       clearcoat: 0.42,
       transparent: true,
-      opacity: 0.24,
+      opacity: 0.22,
       depthWrite: false,
       clippingPlanes: [this.sagittalClipPlane],
       side: THREE.DoubleSide,
@@ -240,7 +202,7 @@ export class VocalTract {
       roughness: 0.32,
       clearcoat: 0.44,
       transparent: true,
-      opacity: 0.52,
+      opacity: 0.50,
       clippingPlanes: [this.sagittalClipPlane, this.bottomClipPlane],
       side: THREE.DoubleSide,
     });
@@ -281,9 +243,6 @@ export class VocalTract {
       toothClipped: makeToothMat(true),
       gum: gumMat,
       boneClipped: boneSolidClipped,
-      craniumBone,
-      maxillaTranslucent,
-      intervertebralDisc,
       uvula: uvulaMat,
       palateMucosa,
       nasalCavity: nasalCavityMat,
@@ -297,36 +256,36 @@ export class VocalTract {
   }
 
   /**
-   * Subtle anatomical mucosal lining bridging hard palate (palatine-bones) to real musculus-uvulae
-   * so the oral roof has authentic wet palatal rugae texture directly above the tongue.
+   * 1:1 Calibrated Palatal Mucosa Roof hugging the exact measured underside of palatine-bones
+   * (Y = 0.285..0.298 across Z = +0.24..0.00) and bridging seamlessly from the alveolar ridge
+   * (Y=0.17, Z=0.63) directly into real musculus-uvulae (Y=0.215, Z=-0.33).
    */
   _buildSoftPalateMucosa() {
-    const segZ = 22;
+    const segZ = 24;
     const segX = 18;
     const positions = [];
     const uvs = [];
     const indices = [];
 
-    // Calibrated 1:1 from real upper-central-incisor (Z=0.71) -> palatine-bones (Y=0.28..0.38) -> musculus-uvulae (Z=-0.34, Y=0.25)
     const roofCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0, 0.16, 0.67),
-      new THREE.Vector3(0, 0.27, 0.52),
-      new THREE.Vector3(0, 0.36, 0.24),
-      new THREE.Vector3(0, 0.35, -0.04),
-      new THREE.Vector3(0, 0.29, -0.25),
-      new THREE.Vector3(0, 0.22, -0.34),
+      new THREE.Vector3(0, 0.165, 0.635), // Alveolar ridge behind upper incisors
+      new THREE.Vector3(0, 0.245, 0.48),  // Anterior hard palate slope
+      new THREE.Vector3(0, 0.295, 0.24),  // Hard palate midline underside (palatine-bones Y=0.285)
+      new THREE.Vector3(0, 0.295, -0.02), // Hard/soft palate junction (Kaf contact)
+      new THREE.Vector3(0, 0.265, -0.20), // Soft palate velum (Qaf contact)
+      new THREE.Vector3(0, 0.215, -0.33), // Joins real musculus-uvulae
     ]);
 
     for (let iz = 0; iz <= segZ; iz++) {
       const tz = iz / segZ;
       const center = roofCurve.getPoint(tz);
-      const halfSpan = 0.31 * Math.sin(0.28 + tz * 2.5) + 0.06;
+      const halfSpan = 0.295 * Math.sin(0.28 + tz * 2.5) + 0.055;
 
       for (let ix = 0; ix <= segX; ix++) {
         const tx = ix / segX;
         const angle = (tx - 0.5) * Math.PI;
         const x = Math.sin(angle) * halfSpan;
-        const archDrop = (1.0 - Math.cos(angle)) * 0.14;
+        const archDrop = (1.0 - Math.cos(angle)) * 0.125;
         positions.push(x, center.y - archDrop, center.z);
         uvs.push(tx, tz);
       }
@@ -378,29 +337,10 @@ export class VocalTract {
         mesh.castShadow = true;
         mesh.receiveShadow = true;
 
-        // 1. Cranium & Cervical Spine C1-C6
-        if (groupName === 'cranium') {
-          mesh.material = this.materials.craniumBone;
-          mesh.castShadow = false;
-          mesh.renderOrder = 2;
-          this.layers.skull.add(mesh);
-          return;
-        }
-        if (groupName === 'spine') {
-          mesh.material = part.includes('disc')
-            ? this.materials.intervertebralDisc
-            : this.materials.boneClipped;
-          this.layers.skull.add(mesh);
-          return;
-        }
-
-        // 2. Upper Dental Arch (14 teeth, gum, maxillae, palatine hard palate)
+        // 1. Upper Dental Arch (14 teeth, gum, palatine hard palate)
         if (groupName === 'upper_dental') {
           if (part === 'upper-gum') {
             mesh.material = this.materials.gum;
-          } else if (part.includes('maxilla')) {
-            mesh.material = this.materials.maxillaTranslucent;
-            mesh.castShadow = false;
           } else if (part.includes('palatine')) {
             mesh.material = this.materials.boneClipped;
           } else {
@@ -415,7 +355,7 @@ export class VocalTract {
           return;
         }
 
-        // 3. Articulated Lower Jaw (14 lower teeth, lower gum, mandible)
+        // 2. Articulated Lower Jaw (14 lower teeth, lower gum, mandible)
         if (groupName === 'lower_jaw') {
           if (part === 'lower-gum') {
             mesh.material = this.materials.gum;
@@ -433,7 +373,7 @@ export class VocalTract {
           return;
         }
 
-        // 4. Al-Khaisyum / Real Nasal Cavity, Conchae, Vomer & Cartilages
+        // 3. Al-Khaisyum / Real Nasal Cavity, Conchae, Vomer & Cartilages
         if (groupName === 'nasal') {
           if (part === 'nasal-cavity' || part === 'nasopharynx') {
             mesh.material = this.materials.nasalCavity;
@@ -453,10 +393,9 @@ export class VocalTract {
           return;
         }
 
-        // 5. Real Pharynx Muscular Wall & Real Musculus Uvulae!
+        // 4. Real Pharynx Muscular Wall & Real Musculus Uvulae
         if (groupName === 'pharynx') {
           if (part === 'musculus-uvulae') {
-            // Pivot real MRI uvula around its superior attachment (0, 0.32, -0.34)
             const uvPivot = new THREE.Group();
             uvPivot.position.set(0, 0.32, -0.34);
             mesh.position.set(0, -0.32, 0.34);
@@ -477,13 +416,12 @@ export class VocalTract {
           return;
         }
 
-        // 6. Real Larynx (Hyoid, Epiglottis, Vocal Folds, Cartilages, Trachea)
+        // 5. Real Larynx (Hyoid, Epiglottis, Vocal Folds, Cartilages, Trachea)
         if (groupName === 'larynx') {
           if (part === 'hyoid-bone') {
             mesh.material = this.materials.boneClipped;
             this.layers.pharynx.add(mesh);
           } else if (part === 'epiglottis') {
-            // Exact 1:1 MRI epiglottis base pivot: (0, -0.66, -0.18)
             const epiPivot = new THREE.Group();
             epiPivot.position.set(0, -0.66, -0.18);
             mesh.position.set(0, 0.66, 0.18);
@@ -510,7 +448,7 @@ export class VocalTract {
   }
 
   /**
-   * Anatomical Layer Dissection API (skull | jaw | nasal | pharynx)
+   * Anatomical Layer Dissection API (jaw | nasal | pharynx)
    */
   setLayerVisible(layerName, visible) {
     if (this.layers[layerName]) {
@@ -558,8 +496,8 @@ export class VocalTract {
       0.12
     );
 
-    // 4. Organic Al-Halq illumination directly on real pharyngeal constrictor muscles!
-    const pulse = 0.20 + Math.sin(time * 5.5) * 0.06 + audioLevel * 0.35;
+    // 4. Organic Al-Halq illumination directly on real pharyngeal constrictor muscles
+    const pulse = 0.22 + Math.sin(time * 5.5) * 0.06 + audioLevel * 0.35;
     const upperEm = pose.throatZone === 2 ? pulse : 0.0;
     const midEm = pose.throatZone === 1 ? pulse : 0.0;
     const lowEm = pose.throatZone === 0 ? pulse : 0.0;
@@ -583,7 +521,7 @@ export class VocalTract {
     // 5. Real Epiglottis tilts posteriorly during Wasathul Halq (ع / ح)
     if (this.epiglottisPivot) {
       const activeMid = pose.throatZone === 1;
-      const targetTilt = activeMid ? -pose.throatPinch * 0.42 : 0.0;
+      const targetTilt = activeMid ? -pose.throatPinch * 0.44 : 0.0;
       this.epiglottisPivot.rotation.x = THREE.MathUtils.lerp(
         this.epiglottisPivot.rotation.x,
         targetTilt,
@@ -591,7 +529,7 @@ export class VocalTract {
       );
       this.materials.epiglottis.emissiveIntensity = THREE.MathUtils.lerp(
         this.materials.epiglottis.emissiveIntensity,
-        activeMid ? 0.42 + audioLevel * 0.55 : 0.02,
+        activeMid ? 0.45 + audioLevel * 0.55 : 0.02,
         0.14
       );
     }

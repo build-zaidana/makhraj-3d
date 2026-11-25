@@ -21,7 +21,6 @@ const DEFAULT_DATA = {
     autoCamera: false,
     bloom: true,
     simpleHead: false,
-    layerSkull: true,
     layerJaw: true,
     layerPharynx: true,
     layerNasal: true,

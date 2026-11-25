@@ -144,16 +144,9 @@ export class OuterHeadShell {
           if (!obj.isMesh) return;
           const parentName = (obj.parent?.name || obj.name || '').toLowerCase();
 
-          if (parentName.includes('teeth')) {
-            // Hide static GLB teeth so our articulated stylized dental arches shine cleanly
+          if (parentName.includes('teeth') || parentName.includes('eye')) {
+            // Hide static GLB teeth and eyeballs so ONLY 1:1 Makharijul Huruf organs shine cleanly
             obj.visible = false;
-            return;
-          }
-
-          if (parentName.includes('eye')) {
-            obj.material = this.eyeMaterial;
-            obj.renderOrder = 9;
-            this.eyeMeshes.push(obj);
             return;
           }
 
@@ -250,24 +243,26 @@ export class OuterHeadShell {
       }
     };
 
-    const dynamicJaw = THREE.MathUtils.clamp(pose.jawOpen + audioLevel * 0.14, 0, 1);
-    setMorph('jawOpen', dynamicJaw * 0.85);
-    setMorph('mouthClose', pose.lipClose * 0.85);
-    setMorph('mouthPress_L', pose.lipClose * 0.7);
-    setMorph('mouthPress_R', pose.lipClose * 0.7);
+    const dynamicJaw = THREE.MathUtils.clamp(pose.jawOpen + audioLevel * 0.12, 0, 1);
+    setMorph('jawOpen', dynamicJaw * 0.84 * (1 - pose.lipClose * 0.85));
+    setMorph('mouthClose', pose.lipClose * 0.96);
+    setMorph('mouthPress_L', pose.lipClose * 0.88);
+    setMorph('mouthPress_R', pose.lipClose * 0.88);
+    setMorph('mouthShrugLower', Math.max(pose.lipClose * 0.38, pose.lipLabiodental * 0.72));
 
-    // Waw rounded/protruded lips
-    setMorph('mouthPucker', pose.lipRound * 0.9);
-    setMorph('mouthFunnel', pose.lipRound * 0.65);
+    // Waw (و) clearly rounded & protruded lips
+    setMorph('mouthPucker', pose.lipRound * 1.0);
+    setMorph('mouthFunnel', pose.lipRound * 0.82);
 
-    // Fa labiodental: tuck lower lip toward upper front teeth
-    setMorph('mouthRollLower', pose.lipLabiodental * 0.95);
-    setMorph('mouthUpperUp_L', pose.lipLabiodental * 0.3);
-    setMorph('mouthUpperUp_R', pose.lipLabiodental * 0.3);
+    // Fa (ف) labiodental: tuck lower lip firmly under upper front central incisors
+    setMorph('mouthRollLower', pose.lipLabiodental * 1.0);
+    setMorph('mouthUpperUp_L', pose.lipLabiodental * 0.38);
+    setMorph('mouthUpperUp_R', pose.lipLabiodental * 0.38);
 
-    // Subtle friendly neutral warmth
-    setMorph('mouthSmile_L', 0.10 * (1 - pose.lipRound));
-    setMorph('mouthSmile_R', 0.10 * (1 - pose.lipRound));
+    // Neutral relaxation (zero smile distortion during lip closure/rounding/labiodental)
+    const neutralRest = 1 - Math.max(pose.lipRound, pose.lipClose, pose.lipLabiodental);
+    setMorph('mouthSmile_L', 0.08 * neutralRest);
+    setMorph('mouthSmile_R', 0.08 * neutralRest);
   }
 
   update(elapsedTime) {

@@ -21,7 +21,7 @@ const LANDMARKS = [
     id: 'palate',
     label: 'Langit-langit',
     sub: 'Al-Hanak Al-A\'la',
-    pos: new THREE.Vector3(0.0, 0.36, 0.22),
+    pos: new THREE.Vector3(0.0, 0.30, 0.18),
     offset: { x: 10, y: -16 },
     match: (l) => ['jim', 'syin', 'ya', 'kaf', 'ra', 'lam', 'nun'].includes(l.id),
   },
@@ -29,15 +29,33 @@ const LANDMARKS = [
     id: 'incisors',
     label: 'Gigi Seri Atas',
     sub: 'Tsanaya Ulya',
-    pos: new THREE.Vector3(0.0, 0.10, 0.76),
+    pos: new THREE.Vector3(0.0, 0.11, 0.74),
     offset: { x: -94, y: -22 },
     match: (l) => ['ta', 'dal', 'tha', 'tsa', 'dzal', 'zha', 'fa'].includes(l.id),
+  },
+  {
+    id: 'lower_incisors',
+    label: 'Gigi Seri Bawah',
+    sub: 'Tsanaya Sufla',
+    pos: new THREE.Vector3(0.0, -0.08, 0.64),
+    offset: { x: -98, y: 12 },
+    onlyWhenActive: true,
+    match: (l) => ['sin', 'zay', 'shad'].includes(l.id),
+  },
+  {
+    id: 'lips',
+    label: 'Dua Bibir',
+    sub: 'Asy-Syafatan',
+    pos: new THREE.Vector3(0.0, -0.01, 0.88),
+    offset: { x: -84, y: 10 },
+    onlyWhenActive: true,
+    match: (l) => ['ba', 'mim', 'waw', 'fa'].includes(l.id),
   },
   {
     id: 'molars',
     label: 'Geraham Atas',
     sub: 'Adhras (Makhraj ض)',
-    pos: new THREE.Vector3(-0.34, 0.14, 0.32),
+    pos: new THREE.Vector3(-0.30, 0.14, 0.30),
     offset: { x: -102, y: -20 },
     onlyWhenActive: true,
     match: (l) => l.id === 'dhad',
@@ -46,7 +64,7 @@ const LANDMARKS = [
     id: 'uvula',
     label: 'Uvula',
     sub: 'Musculus Uvulae',
-    pos: new THREE.Vector3(0.0, 0.24, -0.34),
+    pos: new THREE.Vector3(0.0, 0.24, -0.33),
     offset: { x: 12, y: -10 },
     match: (l) => ['qaf', 'kha', 'ghain'].includes(l.id),
   },
@@ -54,7 +72,7 @@ const LANDMARKS = [
     id: 'tongue',
     label: 'Lidah',
     sub: 'Al-Lisan',
-    pos: new THREE.Vector3(0.0, 0.08, 0.24),
+    pos: new THREE.Vector3(0.0, 0.06, 0.22),
     offset: { x: -12, y: 12 },
     match: (l) => l.makhraj === 'allisan' && l.id !== 'dhad',
   },
@@ -62,7 +80,7 @@ const LANDMARKS = [
     id: 'epiglottis',
     label: 'Epiglotis',
     sub: 'Wasathul Halq (ع ح)',
-    pos: new THREE.Vector3(0.0, -0.42, -0.18),
+    pos: new THREE.Vector3(0.0, -0.40, -0.19),
     offset: { x: 16, y: -6 },
     match: (l) => ['ain', 'ha'].includes(l.id),
   },
@@ -149,7 +167,9 @@ export class AnatomicalLabels {
       item.el.style.opacity = '1';
       const ox = item.active ? item.offset.x : 0;
       const oy = item.active ? item.offset.y : 0;
-      item.el.style.transform = `translate3d(${(sx + ox).toFixed(1)}px, ${(sy + oy).toFixed(1)}px, 0)`;
+      const clampedX = Math.max(12, Math.min(width - rightPad, sx + ox));
+      const clampedY = Math.max(66, Math.min(height - 96, sy + oy));
+      item.el.style.transform = `translate3d(${clampedX.toFixed(1)}px, ${clampedY.toFixed(1)}px, 0)`;
     }
   }
 }

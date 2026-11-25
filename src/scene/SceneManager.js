@@ -13,28 +13,28 @@ import { createPedestalTextures } from './TextureGenerator.js';
  */
 export const CAMERA_PRESETS = {
   side: {
-    pos: new THREE.Vector3(5.65, 0.45, 0.85),
-    target: new THREE.Vector3(0.0, 0.24, -0.42),
+    pos: new THREE.Vector3(4.55, 0.24, 0.82),
+    target: new THREE.Vector3(0.0, 0.06, -0.22),
     label: 'Samping (Sagital)',
   },
   throat: {
-    pos: new THREE.Vector3(4.20, -0.22, 0.10),
-    target: new THREE.Vector3(0.0, -0.34, -0.52),
+    pos: new THREE.Vector3(3.55, -0.28, 0.14),
+    target: new THREE.Vector3(0.0, -0.36, -0.40),
     label: 'Tenggorokan (Al-Halq)',
   },
   lips: {
-    pos: new THREE.Vector3(2.85, 0.18, 3.25),
-    target: new THREE.Vector3(0.32, 0.06, 0.45),
+    pos: new THREE.Vector3(2.42, 0.12, 2.86),
+    target: new THREE.Vector3(0.28, 0.02, 0.44),
     label: 'Bibir & Gigi Depan',
   },
   dhad: {
-    pos: new THREE.Vector3(0.42, 1.65, 3.85),
-    target: new THREE.Vector3(0.38, 0.14, 0.18),
+    pos: new THREE.Vector3(0.38, 1.46, 3.32),
+    target: new THREE.Vector3(0.32, 0.12, 0.16),
     label: '3D Geraham (Khusus ض)',
   },
   front: {
-    pos: new THREE.Vector3(0.18, 0.45, 5.15),
-    target: new THREE.Vector3(0.45, 0.30, 0.0),
+    pos: new THREE.Vector3(0.16, 0.24, 4.38),
+    target: new THREE.Vector3(0.38, 0.08, 0.0),
     label: 'Depan 360°',
   },
 };
@@ -54,9 +54,9 @@ export class SceneManager {
     this.isMobile = width < 768;
     const isPortrait = aspect < 0.85;
 
-    this.camera = new THREE.PerspectiveCamera(isPortrait ? 52 : 36, aspect, 0.05, 45);
+    this.camera = new THREE.PerspectiveCamera(isPortrait ? 50 : 36, aspect, 0.05, 45);
     if (isPortrait) {
-      this.camera.position.set(5.45, 0.35, 0.90);
+      this.camera.position.set(4.50, 0.18, 0.85);
     } else {
       this.camera.position.copy(CAMERA_PRESETS.side.pos);
     }
@@ -97,7 +97,7 @@ export class SceneManager {
     this.controls.maxDistance = 8.2;
     this.controls.maxPolarAngle = Math.PI * 0.85;
     this.controls.target.copy(
-      isPortrait ? new THREE.Vector3(0.0, 0.14, 0.16) : CAMERA_PRESETS.side.target
+      isPortrait ? new THREE.Vector3(0.0, 0.04, 0.18) : CAMERA_PRESETS.side.target
     );
 
     this._camTransition = null;

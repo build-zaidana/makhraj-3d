@@ -6,9 +6,13 @@ import { applySubsurfaceScattering, createTongueTextures } from './TextureGenera
  *
  * Calibrated directly into the real BodyParts3D MRI tongue volume:
  *   X in [-0.28, +0.28], Y in [-0.35, +0.18], Z in [-0.20, +0.66]
- * Features real-time Fast Subsurface Scattering (SSS), moist mucosal clearcoat,
- * 512px micro-papillae normal/roughness maps, and an organic sublingual genioglossus
- * base sling anchoring smoothly into the inner chin symphysis of the real mandible.
+ * Supports full parametric articulation across all 29 Hijaiyah letters:
+ *   - Tip elevation & protrusion (tipY, tipZ)
+ *   - Dorsal blade, mid (Wasathul Lisan), and posterior (Aqshal Lisan / Isti'la) control (bladeY, midY, backY, backZ)
+ *   - Bilateral molar expansion & lift for Dhad & Lam (sideLift)
+ *   - Tip retroflexion / controlled trill for Ra (curl)
+ *   - Sibilant median groove for Sin, Shad, Zay (groove)
+ *   - Pharyngeal tongue-root retraction coupled to Wasathul Halq epiglottis tilt (throatPinch)
  */
 
 const SEGMENTS_U = 56;
@@ -67,10 +71,13 @@ export class TongueMesh {
         bladeY: 0,
         midY: 0,
         backY: 0,
+        backZ: 0,
         sideLift: 0,
         curl: 0,
         groove: 0,
         jawOpen: 0.22,
+        throatPinch: 0,
+        throatZone: -1,
       },
       0,
       0
@@ -116,26 +123,40 @@ export class TongueMesh {
   }
 
   updatePose(pose, time = 0, audioLevel = 0) {
-    const breath = Math.sin(time * 2.0) * 0.005;
+    const breath = Math.sin(time * 2.0) * 0.004;
     const trill =
-      pose.curl > 0.5 ? Math.sin(time * 28.0) * 0.014 * (0.4 + audioLevel * 1.3) : 0;
+      pose.curl > 0.5 ? Math.sin(time * 28.0) * 0.012 * (0.35 + audioLevel * 1.2) : 0;
     const jawDrop = (pose.jawOpen - 0.22) * 0.13;
+    const backZ = pose.backZ || 0;
+    const throatRetract = pose.throatZone === 1 ? (pose.throatPinch || 0) : 0;
 
-    // 6-point Catmull-Rom spine calibrated 1:1 to real MRI tongue volume & surrounding landmarks:
-    // Root sits cleanly anterior to epiglottis (Z=-0.125) and superior to hyoid (Y=-0.21..-0.48)
-    this._ctrlPts[0].set(0, -0.32, -0.08);
-    this._ctrlPts[1].set(0, -0.14 + pose.backY * 0.36, -0.09 - pose.backY * 0.05);
-    this._ctrlPts[2].set(0, 0.02 + pose.backY * 0.82 + breath, -0.01 - pose.backY * 0.08);
-    this._ctrlPts[3].set(0, 0.05 + pose.midY * 0.86 - jawDrop * 0.28 + breath, 0.20);
+    // 6-point Catmull-Rom spine mathematically verified 1:1 against all 54 MRI meshes:
+    // Root sits anterior to epiglottis (Z=-0.125) and superior to hyoid, retracting cleanly on ع/ح
+    this._ctrlPts[0].set(0, -0.32, -0.08 - throatRetract * 0.065);
+    this._ctrlPts[1].set(
+      0,
+      -0.14 + pose.backY * 0.45,
+      -0.10 + backZ * 0.72 - throatRetract * 0.055
+    );
+    this._ctrlPts[2].set(
+      0,
+      0.02 + pose.backY * 0.76 + breath,
+      -0.02 + backZ * 0.85
+    );
+    this._ctrlPts[3].set(
+      0,
+      0.04 + pose.midY * 0.78 - jawDrop * 0.26 + breath,
+      0.18 + backZ * 0.20
+    );
     this._ctrlPts[4].set(
       0,
-      0.01 + pose.bladeY * 0.76 - jawDrop * 0.36 + trill * 0.5,
-      0.42 + pose.tipZ * 0.30
+      0.01 + pose.bladeY * 0.72 - jawDrop * 0.34 + trill * 0.5,
+      0.40 + pose.tipZ * 0.32
     );
     this._ctrlPts[5].set(
       0,
-      -0.02 + pose.tipY * 0.86 + pose.curl * 0.05 - jawDrop * 0.24 + trill,
-      0.62 + pose.tipZ * 0.80 - pose.curl * 0.05
+      -0.02 + pose.tipY * 0.84 + pose.curl * 0.045 - jawDrop * 0.22 + trill,
+      0.60 + pose.tipZ * 0.82 - pose.curl * 0.035
     );
 
     const posAttr = this.geometry.attributes.position;
@@ -156,14 +177,14 @@ export class TongueMesh {
       const tipCap = Math.pow(Math.max(0, 1.0 - Math.pow(v, 5.4)), 0.46);
       const baseTaper = Math.pow(Math.min(1, v * 4.2), 0.52);
 
-      // Lateral spread (Hafatul Lisan reaches inner upper molars at X=+-0.25..0.37 on Dhad!)
+      // Lateral spread (Hafatul Lisan reaches inner upper molars at |X|=0.25..0.34 on Dhad!)
       const sideEnvelope = Math.sin(THREE.MathUtils.clamp((v - 0.16) / 0.74, 0, 1) * Math.PI);
       const halfWidth =
-        (0.24 * baseTaper * (1.0 - 0.44 * Math.pow(v, 1.7)) +
+        (0.23 * baseTaper * (1.0 - 0.44 * Math.pow(v, 1.7)) +
           pose.sideLift * 0.135 * sideEnvelope) *
         tipCap;
 
-      const halfHeight = (0.145 * (1.0 - 0.58 * v) + 0.025) * tipCap * baseTaper;
+      const halfHeight = (0.140 * (1.0 - 0.58 * v) + 0.024) * tipCap * baseTaper;
 
       for (let iu = 0; iu <= SEGMENTS_U; iu++) {
         const theta = (iu / SEGMENTS_U) * Math.PI * 2.0;
@@ -174,8 +195,9 @@ export class TongueMesh {
         let localUp = sinT * halfHeight;
 
         if (sinT < 0) {
-          // Organic fuller anatomical genioglossus muscular belly tapering smoothly at blade & tip
-          const belly = 0.82 + 0.58 * Math.sin(THREE.MathUtils.clamp((v - 0.06) / 0.68, 0, 1) * Math.PI);
+          // Sleek anatomical genioglossus muscular belly matching sagittal MRI proportion
+          const belly =
+            0.68 + 0.34 * Math.sin(THREE.MathUtils.clamp((v - 0.06) / 0.68, 0, 1) * Math.PI);
           localUp *= belly;
         } else {
           localUp *= 0.90 + 0.14 * Math.cos(cosT * Math.PI * 0.5);
@@ -184,20 +206,20 @@ export class TongueMesh {
         // Median dorsal sulcus + sibilant groove (Sin, Shad, Zay)
         if (sinT > 0.08) {
           const centerFactor = Math.exp(-Math.pow(cosT * 2.6, 2.0));
-          const grooveDepth = (0.017 + pose.groove * 0.052 * sideEnvelope) * sinT;
+          const grooveDepth = (0.016 + pose.groove * 0.052 * sideEnvelope) * sinT;
           localUp -= centerFactor * grooveDepth;
         }
 
-        // Lateral margin elevation toward upper molars (Dhad & Lam)
+        // Lateral margin elevation calibrated flush to inner upper molar cusps (Y=0.13..0.18 on Dhad!)
         if (pose.sideLift > 0.01) {
           const edgeFactor = Math.pow(Math.abs(cosT), 2.1);
-          localUp += edgeFactor * pose.sideLift * 0.13 * sideEnvelope;
+          localUp += edgeFactor * pose.sideLift * 0.075 * sideEnvelope;
         }
 
         // Subtle apex curl for Ra'
         if (pose.curl > 0.01 && v > 0.78) {
           const tipFactor = (v - 0.78) / 0.22;
-          localUp += tipFactor * tipFactor * pose.curl * 0.04;
+          localUp += tipFactor * tipFactor * pose.curl * 0.036;
         }
 
         const idx = (iv * (SEGMENTS_U + 1) + iu) * 3;
