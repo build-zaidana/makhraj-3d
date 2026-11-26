@@ -41,6 +41,7 @@ export const xrayFresnelFragmentShader = /* glsl */ `
   uniform float uClipX;
   uniform float uEnableClip;
   uniform float uScanlineIntensity;
+  uniform float uLightMode;
 
   varying vec3 vNormalWorld;
   varying vec3 vViewDirWorld;
@@ -59,28 +60,31 @@ export const xrayFresnelFragmentShader = /* glsl */ `
     }
     vec3 V = normalize(vViewDirWorld);
 
-    // Fresnel Rim Effect: edges glow bright, front-facing surface stays transparent
+    // Fresnel Rim Effect: edges stand out cleanly while center stays crystal clear
     float ndotv = clamp(abs(dot(N, V)), 0.0, 1.0);
     float fresnel = pow(1.0 - ndotv, uFresnelPower);
 
-    // Subtle futuristic medical/educational horizontal scanlines
+    // Subtle scanlines (primarily in dark X-Ray mode; clean frosted glass in light studio mode)
     float scan = sin(vWorldPos.y * 42.0 - uTime * 2.2) * 0.5 + 0.5;
     float scanBoost = mix(1.0, 0.85 + 0.30 * scan, uScanlineIntensity);
 
-    // Soft glowing highlight right along the sagittal slice edge
+    // Crisp contour line along the sagittal cut edge (clearly traces lips & face profile!)
     float cutDist = abs(vWorldPos.x - uClipX);
-    float cutEdge = (uEnableClip > 0.5) ? smoothstep(0.065, 0.0, cutDist) : 0.0;
+    float cutEdge = (uEnableClip > 0.5) ? smoothstep(0.058, 0.0, cutDist) : 0.0;
 
-    // Back-face subtle interior tint (helps orient the far half of the head)
-    float backFaceDim = gl_FrontFacing ? 1.0 : 0.65;
+    float backFaceDim = gl_FrontFacing ? 1.0 : mix(0.65, 0.82, uLightMode);
 
-    vec3 baseCol = mix(uColor, uRimColor, fresnel) * scanBoost * backFaceDim;
-    baseCol = mix(baseCol, uCutColor, cutEdge * 0.92);
+    vec3 baseCol = mix(uColor, uRimColor, fresnel) * scanBoost;
+    if (uLightMode < 0.5) {
+      baseCol *= backFaceDim;
+    }
+    baseCol = mix(baseCol, uCutColor, cutEdge * 0.90);
 
-    // Keep center very clear so internal tongue/teeth stay crisp, glow at silhouette & cut edge
-    float alpha = (0.06 + fresnel * 0.78) * uOpacity * backFaceDim;
-    alpha = max(alpha, cutEdge * 0.88 * uOpacity);
-    alpha = clamp(alpha, 0.0, 0.92);
+    float darkAlpha = (0.06 + fresnel * 0.76) * uOpacity * backFaceDim;
+    float lightAlpha = (0.03 + fresnel * 0.46) * uOpacity * backFaceDim;
+    float alpha = mix(darkAlpha, lightAlpha, uLightMode);
+    alpha = max(alpha, cutEdge * mix(0.88, 0.72, uLightMode) * uOpacity);
+    alpha = clamp(alpha, 0.0, mix(0.92, 0.78, uLightMode));
 
     gl_FragColor = vec4(baseCol, alpha);
   }

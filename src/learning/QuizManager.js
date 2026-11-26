@@ -50,15 +50,15 @@ export class QuizManager {
 
       const options = shuffle([correctCat, ...distractors]).map((cat) => ({
         value: cat.id,
-        label: cat.name,
-        sub: cat.subtitle,
+        label: cat.friendlyName || cat.name,
+        sub: `${cat.name} (${cat.arabic})`,
         isArabic: false,
       }));
 
       this.currentQuestion = {
         mode: 'makhraj',
         letter,
-        prompt: `Di mana makhraj utama huruf ${letter.phonetic} (${letter.char})?`,
+        prompt: `Dari bagian mana suara huruf ${letter.phonetic} (${letter.char}) keluar?`,
         correctValue: correctCat.id,
         options,
         answered: false,

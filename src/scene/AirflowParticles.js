@@ -15,7 +15,7 @@ import {
 
 const PARTICLE_COUNT = 320;
 
-const MODE_COLORS = {
+const MODE_COLORS_DARK = {
   open: new THREE.Color('#e5e5e5'),
   hams: new THREE.Color('#ffffff'),
   jahr: new THREE.Color('#a3a3a3'),
@@ -23,6 +23,16 @@ const MODE_COLORS = {
   safir: new THREE.Color('#ffffff'),
   throat: new THREE.Color('#d4d4d4'),
   ghunnah: new THREE.Color('#ffffff'),
+};
+
+const MODE_COLORS_LIGHT = {
+  open: new THREE.Color('#404040'),
+  hams: new THREE.Color('#171717'),
+  jahr: new THREE.Color('#525252'),
+  qalqalah: new THREE.Color('#1f1f1f'),
+  safir: new THREE.Color('#141414'),
+  throat: new THREE.Color('#303030'),
+  ghunnah: new THREE.Color('#171717'),
 };
 
 export class AirflowParticles {
@@ -77,6 +87,7 @@ export class AirflowParticles {
     this.material = new THREE.ShaderMaterial({
       uniforms: {
         uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
+        uCoreWhite: { value: 0.45 },
       },
       vertexShader: airflowParticleVertexShader,
       fragmentShader: airflowParticleFragmentShader,
@@ -91,7 +102,15 @@ export class AirflowParticles {
 
     this.config = { mode: 'open', nasal: false, throatPulse: false, speed: 1.0 };
     this.visible = true;
+    this.isLight = false;
     this._tmpPt = new THREE.Vector3();
+  }
+
+  setTheme(theme) {
+    this.isLight = theme === 'light';
+    this.material.uniforms.uCoreWhite.value = this.isLight ? 0.0 : 0.45;
+    this.material.blending = this.isLight ? THREE.NormalBlending : THREE.AdditiveBlending;
+    this.material.needsUpdate = true;
   }
 
   setConfig(airflowConfig) {
@@ -106,8 +125,9 @@ export class AirflowParticles {
   update(dt, elapsedTime, speedMultiplier = 1.0, audioLevel = 0) {
     if (!this.visible) return;
 
-    const baseColor = MODE_COLORS[this.config.mode] || MODE_COLORS.open;
-    const nasalColor = MODE_COLORS.ghunnah;
+    const palette = this.isLight ? MODE_COLORS_LIGHT : MODE_COLORS_DARK;
+    const baseColor = palette[this.config.mode] || palette.open;
+    const nasalColor = palette.ghunnah;
     const speed = (this.config.speed || 1.0) * 0.44 * speedMultiplier * (1.0 + audioLevel * 0.85);
     const isQalqalah = this.config.mode === 'qalqalah';
     const isSafir = this.config.mode === 'safir';
@@ -138,11 +158,14 @@ export class AirflowParticles {
 
       const fadeIn = THREE.MathUtils.smoothstep(m.t, 0.0, 0.14);
       const fadeOut = 1.0 - THREE.MathUtils.smoothstep(m.t, 0.82, 1.0);
-      this.alphas[i] = fadeIn * fadeOut * (0.44 + audioLevel * 0.36);
+      const baseAlpha = this.isLight ? 0.68 + audioLevel * 0.30 : 0.44 + audioLevel * 0.36;
+      this.alphas[i] = fadeIn * fadeOut * baseAlpha;
 
-      // Silky refined micro-particle sizing
+      // Silky refined micro-particle sizing (slightly fuller in light mode for crisp readability)
+      const themeScale = this.isLight ? 1.18 : 1.0;
       this.sizes[i] =
         (useNasal ? 0.22 : isSafir ? 0.16 : 0.20) *
+        themeScale *
         (0.75 + 0.45 * fadeOut) *
         (1.0 + audioLevel * 0.45);
 

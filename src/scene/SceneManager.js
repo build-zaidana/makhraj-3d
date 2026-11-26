@@ -200,8 +200,16 @@ export class SceneManager {
     this.pedestal.position.set(0, -1.50, -0.18);
     this.pedestal.receiveShadow = true;
     this.scene.add(this.pedestal);
+    this._darkPedestalMat = topMat;
+    this._lightPedestalMat = new THREE.MeshStandardMaterial({
+      color: '#deded9',
+      normalMap,
+      normalScale: new THREE.Vector2(0.42, 0.42),
+      roughness: 0.62,
+      metalness: 0.06,
+    });
 
-    // Hairline monochrome silver-white bezel ring
+    // Hairline monochrome bezel ring
     const ringGeo = new THREE.TorusGeometry(1.79, 0.010, 14, 84);
     const ringMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color('#e5e5e5'),
@@ -213,18 +221,70 @@ export class SceneManager {
     this.pedestalRing.position.set(0, -1.425, -0.18);
     this.scene.add(this.pedestalRing);
 
-    // Pure neutral matte dark studio floor receiving far shadows
+    // Pure neutral matte studio floor receiving far shadows
     const floorGeo = new THREE.CircleGeometry(18, 64);
     const floorMat = new THREE.MeshStandardMaterial({
       color: '#070707',
       roughness: 0.92,
       metalness: 0.04,
     });
-    const floor = new THREE.Mesh(floorGeo, floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -1.575;
-    floor.receiveShadow = true;
-    this.scene.add(floor);
+    this.floor = new THREE.Mesh(floorGeo, floorMat);
+    this.floor.rotation.x = -Math.PI / 2;
+    this.floor.position.y = -1.575;
+    this.floor.receiveShadow = true;
+    this.scene.add(this.floor);
+    this.isLightTheme = false;
+  }
+
+  setTheme(theme) {
+    const isLight = theme === 'light';
+    this.isLightTheme = isLight;
+    if (isLight) {
+      this.scene.background.set('#e8e8e2');
+      this.scene.fog.color.set('#e8e8e2');
+      this.scene.fog.density = 0.026;
+      this.scene.environmentIntensity = 0.60;
+      this.renderer.toneMappingExposure = 1.02;
+
+      this.hemiLight.color.set('#ffffff');
+      this.hemiLight.groundColor.set('#c8c8c2');
+      this.hemiLight.intensity = 0.96;
+      this.keyLight.intensity = 1.44;
+      this.rimLight.intensity = 0.64;
+      this.fillLight.intensity = 0.64;
+      this.makhrajLight.intensity = 0.72;
+
+      this._lightPedestalMat.color.set('#d2d2cc');
+      this.pedestal.material = this._lightPedestalMat;
+      this.pedestalRing.material.color.set('#2e2e2e');
+      this.pedestalRing.material.opacity = 0.40;
+      this.floor.material.color.set('#deded7');
+
+      this.bloomPass.strength = 0.05;
+      this.bloomPass.threshold = 1.38;
+    } else {
+      this.scene.background.set('#101010');
+      this.scene.fog.color.set('#101010');
+      this.scene.fog.density = 0.038;
+      this.scene.environmentIntensity = 0.58;
+      this.renderer.toneMappingExposure = 1.08;
+
+      this.hemiLight.color.set('#f5f5f5');
+      this.hemiLight.groundColor.set('#1c1c1c');
+      this.hemiLight.intensity = 0.70;
+      this.keyLight.intensity = 1.38;
+      this.rimLight.intensity = 1.05;
+      this.fillLight.intensity = 0.58;
+      this.makhrajLight.intensity = 1.25;
+
+      this.pedestal.material = this._darkPedestalMat;
+      this.pedestalRing.material.color.set('#e5e5e5');
+      this.pedestalRing.material.opacity = 0.48;
+      this.floor.material.color.set('#0b0b0b');
+
+      this.bloomPass.strength = 0.24;
+      this.bloomPass.threshold = 1.05;
+    }
   }
 
   setBloomEnabled(enabled) {
@@ -273,7 +333,9 @@ export class SceneManager {
     }
     if (this._targetLightColor) {
       this.makhrajLight.color.lerp(this._targetLightColor, Math.min(1, dt * 6));
-      this.pedestalRing.material.color.lerp(this._targetLightColor, Math.min(1, dt * 5));
+      if (!this.isLightTheme) {
+        this.pedestalRing.material.color.lerp(this._targetLightColor, Math.min(1, dt * 5));
+      }
     }
 
     this.controls.update();

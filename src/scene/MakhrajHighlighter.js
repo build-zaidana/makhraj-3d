@@ -23,6 +23,7 @@ export class MakhrajHighlighter {
       uTime: { value: 0 },
       uIntensity: { value: 0.95 },
       uAudioLevel: { value: 0 },
+      uLightMode: { value: 0.0 },
     };
 
     this.secondaryUniforms = {
@@ -30,6 +31,7 @@ export class MakhrajHighlighter {
       uTime: { value: 0 },
       uIntensity: { value: 0.0 },
       uAudioLevel: { value: 0 },
+      uLightMode: { value: 0.0 },
     };
 
     const makeBeacon = (uniforms, radius = 0.115) => {
@@ -64,7 +66,7 @@ export class MakhrajHighlighter {
       ring.renderOrder = 15;
       container.add(ring);
 
-      return { container, sphere, ring, ringMat };
+      return { container, sphere, sphereMat, ring, ringMat };
     };
 
     this.primary = makeBeacon(this.primaryUniforms, 0.078);
@@ -80,12 +82,36 @@ export class MakhrajHighlighter {
     this._currentPos = this._targetPos.clone();
     this._showMirror = false;
     this._showSecondary = false;
+    this.isLight = false;
+  }
+
+  setTheme(theme) {
+    this.isLight = theme === 'light';
+    const blending = this.isLight ? THREE.NormalBlending : THREE.AdditiveBlending;
+    this.primaryUniforms.uLightMode.value = this.isLight ? 1.0 : 0.0;
+    this.secondaryUniforms.uLightMode.value = this.isLight ? 1.0 : 0.0;
+    this.secondaryUniforms.uColor.value.set(this.isLight ? '#262626' : '#d4d4d4');
+    [this.primary, this.mirrorDhad, this.secondary].forEach((b) => {
+      b.sphereMat.blending = blending;
+      b.sphereMat.needsUpdate = true;
+      b.ringMat.blending = blending;
+      b.ringMat.needsUpdate = true;
+    });
+    if (this.isLight) {
+      this._targetColor.set('#171717');
+      this.primaryUniforms.uColor.value.set('#171717');
+      this.secondary.ringMat.color.set('#303030');
+    } else {
+      this._targetColor.set('#ffffff');
+      this.primaryUniforms.uColor.value.set('#ffffff');
+      this.secondary.ringMat.color.set('#d4d4d4');
+    }
   }
 
   setLetter(letter) {
     const cat = MAKHRAJ_CATEGORIES[letter.makhraj] || MAKHRAJ_CATEGORIES.allisan;
     this._targetPos.set(letter.focusPoint[0], letter.focusPoint[1], letter.focusPoint[2]);
-    this._targetColor.set(cat.color);
+    this._targetColor.set(this.isLight ? '#171717' : cat.color);
 
     // Special 3D highlight for Dhad (ض): show BOTH left and right lateral tongue-molar contact zones!
     this._showMirror = letter.id === 'dhad';
@@ -120,7 +146,7 @@ export class MakhrajHighlighter {
     // Billboard pulse rings toward the active camera so they always read crisply from any angle
     const wave = (elapsedTime * 1.15) % 1.0;
     const ringScale = 0.85 + wave * 1.15 + audioLevel * 0.3;
-    const ringOpacity = (1.0 - wave) * (0.65 + audioLevel * 0.35);
+    const ringOpacity = (1.0 - wave) * ((this.isLight ? 0.88 : 0.65) + audioLevel * 0.35);
 
     [this.primary, this.mirrorDhad, this.secondary].forEach((b) => {
       if (!b.container.visible) return;

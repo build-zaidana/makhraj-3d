@@ -10,6 +10,7 @@ export const MAKHRAJ_CATEGORIES = {
   aljauf: {
     id: 'aljauf',
     name: 'Al-Jauf',
+    friendlyName: 'Rongga Mulut',
     arabic: 'الجوف',
     subtitle: 'Rongga Mulut & Tenggorokan',
     color: '#ffffff',
@@ -19,8 +20,9 @@ export const MAKHRAJ_CATEGORIES = {
   alhalq: {
     id: 'alhalq',
     name: 'Al-Halq',
+    friendlyName: 'Tenggorokan',
     arabic: 'الحلق',
-    subtitle: 'Tenggorokan',
+    subtitle: 'Tenggorokan (Bawah, Tengah, Atas)',
     color: '#e5e5e5',
     bgSoft: 'rgba(229, 229, 229, 0.10)',
     description: 'Terbagi menjadi 3 tingkat: tenggorokan bawah (ء ه), tengah (ع ح), dan atas dekat pangkal lidah (غ خ).',
@@ -28,8 +30,9 @@ export const MAKHRAJ_CATEGORIES = {
   allisan: {
     id: 'allisan',
     name: 'Al-Lisan',
+    friendlyName: 'Lidah',
     arabic: 'اللسان',
-    subtitle: 'Lidah',
+    subtitle: 'Pangkal, Tengah, Tepi & Ujung Lidah',
     color: '#d4d4d4',
     bgSoft: 'rgba(212, 212, 212, 0.10)',
     description: 'Makhraj terbanyak (18 huruf): melibatkan pangkal, tengah, tepi (sisi), hingga ujung lidah bertemu langit-langit atau gigi.',
@@ -37,8 +40,9 @@ export const MAKHRAJ_CATEGORIES = {
   asysyafatan: {
     id: 'asysyafatan',
     name: 'Asy-Syafatan',
+    friendlyName: 'Dua Bibir',
     arabic: 'الشفتان',
-    subtitle: 'Dua Bibir',
+    subtitle: 'Pertemuan Dua Bibir & Gigi Atas',
     color: '#a3a3a3',
     bgSoft: 'rgba(163, 163, 163, 0.12)',
     description: 'Melibatkan pertemuan perut bibir bawah dengan gigi seri atas (ف), merapatnya dua bibir (ب م), atau membulatnya bibir (و).',
@@ -46,8 +50,9 @@ export const MAKHRAJ_CATEGORIES = {
   alkhaisyum: {
     id: 'alkhaisyum',
     name: 'Al-Khaisyum',
+    friendlyName: 'Rongga Hidung',
     arabic: 'الخيشوم',
-    subtitle: 'Rongga Hidung (Ghunnah)',
+    subtitle: 'Suara Dengung (Ghunnah)',
     color: '#737373',
     bgSoft: 'rgba(115, 115, 115, 0.16)',
     description: 'Sumber suara dengung (ghunnah) yang keluar melalui rongga hidung — menyertai huruf Nun (ن) dan Mim (م).',

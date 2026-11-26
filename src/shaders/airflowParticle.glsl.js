@@ -24,6 +24,8 @@ export const airflowParticleVertexShader = /* glsl */ `
 `;
 
 export const airflowParticleFragmentShader = /* glsl */ `
+  uniform float uCoreWhite;
+
   varying float vAlpha;
   varying vec3 vColor;
 
@@ -36,7 +38,7 @@ export const airflowParticleFragmentShader = /* glsl */ `
     float mist = exp(-dist * dist * 16.0);
     float core = smoothstep(0.22, 0.0, dist);
 
-    vec3 finalColor = mix(vColor, vec3(1.0), core * 0.45);
+    vec3 finalColor = mix(vColor, vec3(1.0), core * uCoreWhite);
     float finalAlpha = mist * vAlpha;
 
     gl_FragColor = vec4(finalColor, finalAlpha);

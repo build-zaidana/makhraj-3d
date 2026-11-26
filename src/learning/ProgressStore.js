@@ -13,6 +13,8 @@ const DEFAULT_DATA = {
     bestStreak: 0,
   },
   prefs: {
+    theme: 'light',
+    welcomeDismissed: false,
     viewMode: 'xray-cut',
     clipX: 0.04,
     opacity: 0.72,

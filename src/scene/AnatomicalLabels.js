@@ -11,8 +11,8 @@ import * as THREE from 'three';
 const LANDMARKS = [
   {
     id: 'khaisyum',
-    label: 'Al-Khaisyum',
-    sub: 'Rongga Hidung',
+    label: 'Rongga Hidung',
+    sub: 'Al-Khaisyum (Dengung)',
     pos: new THREE.Vector3(0.0, 0.62, 0.50),
     offset: { x: 10, y: -18 },
     match: (l) => l.secondaryMakhraj === 'alkhaisyum' || l.makhraj === 'alkhaisyum',
@@ -20,7 +20,7 @@ const LANDMARKS = [
   {
     id: 'palate',
     label: 'Langit-langit',
-    sub: 'Al-Hanak Al-A\'la',
+    sub: 'Atap Rongga Mulut',
     pos: new THREE.Vector3(0.0, 0.30, 0.18),
     offset: { x: 10, y: -16 },
     match: (l) => ['jim', 'syin', 'ya', 'kaf', 'ra', 'lam', 'nun'].includes(l.id),
@@ -28,7 +28,7 @@ const LANDMARKS = [
   {
     id: 'incisors',
     label: 'Gigi Seri Atas',
-    sub: 'Tsanaya Ulya',
+    sub: 'Gigi Depan Atas',
     pos: new THREE.Vector3(0.0, 0.11, 0.74),
     offset: { x: -94, y: -22 },
     match: (l) => ['ta', 'dal', 'tha', 'tsa', 'dzal', 'zha', 'fa'].includes(l.id),
@@ -36,7 +36,7 @@ const LANDMARKS = [
   {
     id: 'lower_incisors',
     label: 'Gigi Seri Bawah',
-    sub: 'Tsanaya Sufla',
+    sub: 'Gigi Depan Bawah',
     pos: new THREE.Vector3(0.0, -0.08, 0.64),
     offset: { x: -98, y: 12 },
     onlyWhenActive: true,
@@ -54,7 +54,7 @@ const LANDMARKS = [
   {
     id: 'molars',
     label: 'Geraham Atas',
-    sub: 'Adhras (Makhraj ض)',
+    sub: 'Titik Huruf ض',
     pos: new THREE.Vector3(-0.30, 0.14, 0.30),
     offset: { x: -102, y: -20 },
     onlyWhenActive: true,
@@ -62,8 +62,8 @@ const LANDMARKS = [
   },
   {
     id: 'uvula',
-    label: 'Uvula',
-    sub: 'Musculus Uvulae',
+    label: 'Anak Tekak (Uvula)',
+    sub: 'Pangkal Langit-langit',
     pos: new THREE.Vector3(0.0, 0.24, -0.33),
     offset: { x: 12, y: -10 },
     match: (l) => ['qaf', 'kha', 'ghain'].includes(l.id),
@@ -78,8 +78,8 @@ const LANDMARKS = [
   },
   {
     id: 'epiglottis',
-    label: 'Epiglotis',
-    sub: 'Wasathul Halq (ع ح)',
+    label: 'Tenggorokan Tengah',
+    sub: 'Katup Epiglotis (ع ح)',
     pos: new THREE.Vector3(0.0, -0.40, -0.19),
     offset: { x: 16, y: -6 },
     match: (l) => ['ain', 'ha'].includes(l.id),
@@ -87,7 +87,7 @@ const LANDMARKS = [
   {
     id: 'vocals',
     label: 'Pita Suara',
-    sub: 'Aqshal Halq (ء ه)',
+    sub: 'Tenggorokan Bawah (ء ه)',
     pos: new THREE.Vector3(0.0, -0.74, -0.24),
     offset: { x: 16, y: 8 },
     match: (l) => ['hamzah', 'haa', 'alif'].includes(l.id),

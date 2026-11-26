@@ -25,6 +25,7 @@ export const makhrajGlowFragmentShader = /* glsl */ `
   uniform float uTime;
   uniform float uIntensity;
   uniform float uAudioLevel;
+  uniform float uLightMode;
 
   varying vec3 vNormal;
   varying vec3 vViewDir;
@@ -36,16 +37,18 @@ export const makhrajGlowFragmentShader = /* glsl */ `
     float fresnel = pow(1.0 - ndotv, 1.8);
     float core = pow(ndotv, 2.2);
 
-    // Rhythmic educational pulse + live voice amplitude boost
     float pulse = 0.72 + 0.28 * sin(uTime * 4.5);
-    float audioBoost = 1.0 + uAudioLevel * 1.1;
-
-    // Traveling surface shimmer
+    float audioBoost = 1.0 + uAudioLevel * 0.95;
     float ring = 0.5 + 0.5 * sin(length(vLocalPos) * 28.0 - uTime * 6.0);
 
-    vec3 color = uColor * (1.15 + 0.55 * core + 0.35 * ring) * audioBoost;
-    float alpha = (core * 0.55 + fresnel * 0.85) * pulse * uIntensity;
+    vec3 darkCol = uColor * (1.15 + 0.55 * core + 0.35 * ring) * audioBoost;
+    vec3 lightCol = uColor * (0.95 + 0.15 * ring);
+    vec3 color = mix(darkCol, lightCol, uLightMode);
 
-    gl_FragColor = vec4(color, clamp(alpha, 0.0, 0.95));
+    float darkAlpha = (core * 0.55 + fresnel * 0.85) * pulse * uIntensity;
+    float lightAlpha = (core * 0.22 + fresnel * 0.42) * pulse * uIntensity;
+    float alpha = mix(darkAlpha, lightAlpha, uLightMode);
+
+    gl_FragColor = vec4(color, clamp(alpha, 0.0, mix(0.95, 0.55, uLightMode)));
   }
 `;

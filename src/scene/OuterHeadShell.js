@@ -31,6 +31,7 @@ export class OuterHeadShell {
       uClipX: { value: 0.04 },
       uEnableClip: { value: 1.0 },
       uScanlineIntensity: { value: 0.22 },
+      uLightMode: { value: 0.0 },
     };
 
     // Custom GLSL X-Ray Fresnel ShaderMaterial (morph-target compatible!)
@@ -228,6 +229,24 @@ export class OuterHeadShell {
   setModelStyle(useFallback) {
     this.useProceduralFallback = useFallback;
     this.setViewMode(this.viewMode);
+  }
+
+  setTheme(theme) {
+    const isLight = theme === 'light';
+    this.xrayUniforms.uLightMode.value = isLight ? 1.0 : 0.0;
+    if (isLight) {
+      this.xrayUniforms.uColor.value.set('#9e9e9a');
+      this.xrayUniforms.uRimColor.value.set('#262626');
+      this.xrayUniforms.uCutColor.value.set('#141414');
+      this.xrayUniforms.uScanlineIntensity.value = 0.04;
+      this.xrayUniforms.uFresnelPower.value = 2.0;
+    } else {
+      this.xrayUniforms.uColor.value.set('#525252');
+      this.xrayUniforms.uRimColor.value.set('#f5f5f5');
+      this.xrayUniforms.uCutColor.value.set('#ffffff');
+      this.xrayUniforms.uScanlineIntensity.value = 0.20;
+      this.xrayUniforms.uFresnelPower.value = 2.25;
+    }
   }
 
   /**
