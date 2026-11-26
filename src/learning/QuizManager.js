@@ -6,13 +6,16 @@ import {
 } from '../data/hijaiyahData.js';
 
 /**
- * QuizManager — Interactive Tajwid & Makharijul Huruf Practice Engine
+ * QuizManager — Adaptive Tajwid & Makharijul Huruf Practice Engine
  *
- * Two modes:
- *  - 'letter'  : Animates the 3D vocal tract + plays audio while hiding the letter;
- *                student identifies the letter from 4 curated confusing choices.
- *  - 'makhraj' : Shows the letter + animates 3D + plays audio;
- *                student identifies the primary Makhraj category.
+ * Modes:
+ *  - 'letter'  : Animates the 3D vocal tract + plays audio while hiding the letter
+ *  - 'makhraj' : Shows the letter + animates 3D + asks which organ/makhraj produces it
+ *
+ * Scopes:
+ *  - 'all'        : All 29 Hijaiyah letters
+ *  - 'confusing'  : Curated commonly confused letters (ح/ه/خ, ت/ط/د, س/ص/ث, د/ض, ذ/ز/ظ, ق/ك, ع/ء, ب/ف/م)
+ *  - 'unmastered' : Smart adaptive focus on letters the learner has not mastered yet
  */
 
 function shuffle(arr) {
@@ -24,20 +27,65 @@ function shuffle(arr) {
   return copy;
 }
 
+const CONFUSING_ID_SET = new Set(CONFUSION_PAIRS.flatMap((p) => p.letters));
+
 export class QuizManager {
   constructor() {
     this.mode = 'letter'; // 'letter' | 'makhraj'
+    this.scope = 'all';   // 'all' | 'confusing' | 'unmastered'
     this.currentQuestion = null;
     this.lastLetterId = null;
+
+    // 10-question structured practice session tracking
+    this.roundSize = 10;
+    this.roundIndex = 0;
+    this.roundCorrect = 0;
+    this.roundMissed = [];
   }
 
   setMode(mode) {
     this.mode = mode === 'makhraj' ? 'makhraj' : 'letter';
+    this.resetRound();
   }
 
-  nextQuestion() {
-    // Pick a letter different from the previous one
-    const pool = HIJAIYAH_LETTERS.filter((l) => l.id !== this.lastLetterId);
+  setScope(scope) {
+    this.scope = ['all', 'confusing', 'unmastered'].includes(scope) ? scope : 'all';
+    this.resetRound();
+  }
+
+  resetRound() {
+    this.roundIndex = 0;
+    this.roundCorrect = 0;
+    this.roundMissed = [];
+  }
+
+  isRoundComplete() {
+    return this.roundIndex >= this.roundSize;
+  }
+
+  getRoundSummary() {
+    const uniqueMissed = Array.from(new Set(this.roundMissed)).map((id) => getLetterById(id));
+    return {
+      total: this.roundSize,
+      correct: this.roundCorrect,
+      accuracy: Math.round((this.roundCorrect / this.roundSize) * 100),
+      missedLetters: uniqueMissed,
+    };
+  }
+
+  nextQuestion(masteredSet = null) {
+    let candidates = HIJAIYAH_LETTERS;
+    if (this.scope === 'confusing') {
+      candidates = HIJAIYAH_LETTERS.filter((l) => CONFUSING_ID_SET.has(l.id));
+    } else if (this.scope === 'unmastered' && masteredSet) {
+      const unmastered = HIJAIYAH_LETTERS.filter((l) => !masteredSet.has(l.id));
+      if (unmastered.length > 0) candidates = unmastered;
+    }
+
+    const pool =
+      candidates.length > 1
+        ? candidates.filter((l) => l.id !== this.lastLetterId)
+        : candidates;
     const letter = pool[Math.floor(Math.random() * pool.length)];
     this.lastLetterId = letter.id;
 
@@ -67,7 +115,7 @@ export class QuizManager {
       return this.currentQuestion;
     }
 
-    // Mode 'letter': prefer smart confusing distractors so practice genuinely sharpens perception!
+    // Mode 'letter': smart confusing distractors
     const distractorIds = new Set();
     const pairGroup = CONFUSION_PAIRS.find((g) => g.letters.includes(letter.id));
     if (pairGroup) {
@@ -75,7 +123,6 @@ export class QuizManager {
         if (id !== letter.id) distractorIds.add(id);
       });
     }
-    // Fill remaining distractors from same makhraj first, then random letters
     const sameMakhraj = shuffle(
       HIJAIYAH_LETTERS.filter((l) => l.id !== letter.id && l.makhraj === letter.makhraj)
     );
@@ -117,9 +164,16 @@ export class QuizManager {
     this.currentQuestion.answered = true;
     this.currentQuestion.selectedValue = value;
     const isCorrect = value === this.currentQuestion.correctValue;
+    this.roundIndex += 1;
+    if (isCorrect) {
+      this.roundCorrect += 1;
+    } else {
+      this.roundMissed.push(this.currentQuestion.letter.id);
+    }
     return {
       isCorrect,
       question: this.currentQuestion,
+      roundComplete: this.isRoundComplete(),
     };
   }
 }

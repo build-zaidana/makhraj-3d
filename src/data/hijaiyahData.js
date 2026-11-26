@@ -96,14 +96,62 @@ export function getSifatExplanation(chipText) {
  * Curated commonly confused letter pairs for the Compare Mode!
  */
 export const CONFUSION_PAIRS = [
-  { id: 'ha-haa-kha', label: 'ح vs ه vs خ', desc: 'Beda kedalaman tenggorokan', letters: ['ha', 'haa', 'kha'] },
-  { id: 'ta-tha-dal', label: 'ت vs ط vs د', desc: 'Tipis vs Tebal (Isti\'la) vs Pantul', letters: ['ta', 'tha', 'dal'] },
-  { id: 'sin-shad-tsa', label: 'س vs ص vs ث', desc: 'Desis tipis vs Tebal vs Ujung gigi', letters: ['sin', 'shad', 'tsa'] },
-  { id: 'dal-dhad', label: 'د vs ض', desc: 'Ujung lidah vs Tepi lidah ke geraham', letters: ['dal', 'dhad'] },
-  { id: 'dzal-zay-zha', label: 'ذ vs ز vs ظ', desc: 'Ujung gigi tipis vs Desis vs Tebal', letters: ['dzal', 'zay', 'zha'] },
-  { id: 'qaf-kaf', label: 'ق vs ك', desc: 'Pangkal lidah belakang vs agak maju', letters: ['qaf', 'kaf'] },
-  { id: 'ain-hamzah', label: 'ع vs ء', desc: 'Tenggorokan tengah vs bawah', letters: ['ain', 'hamzah'] },
-  { id: 'ba-fa-mim', label: 'ب vs ف vs م', desc: 'Bibir rapat vs Bibir-gigi vs Dengung', letters: ['ba', 'fa', 'mim'] },
+  {
+    id: 'ha-haa-kha',
+    label: 'ح vs ه vs خ',
+    desc: 'Beda kedalaman tenggorokan',
+    diffNote: 'ه dari pangkal tenggorokan paling bawah (lega), ح dari tenggorokan tengah (epiglotis menyempit halus), dan خ dari tenggorokan atas dekat anak tekak (bergesekan tebal).',
+    letters: ['ha', 'haa', 'kha'],
+  },
+  {
+    id: 'ta-tha-dal',
+    label: 'ت vs ط vs د',
+    desc: 'Tipis vs Tebal (Isti\'la) vs Pantul',
+    diffNote: 'Ujung lidah berada di titik yang sama (pangkal gigi seri atas). Bedanya: ط mengangkat pangkal lidah tinggi (tebal), ت diiringi nafas halus, dan د kuat memantul tanpa angin.',
+    letters: ['ta', 'tha', 'dal'],
+  },
+  {
+    id: 'sin-shad-tsa',
+    label: 'س vs ص vs ث',
+    desc: 'Desis tipis vs Tebal vs Ujung gigi',
+    diffNote: 'س dan ص ujung lidahnya di belakang gigi bawah (ص pangkal lidahnya terangkat tebal), sedangkan ث ujung lidahnya maju menyentuh ujung gigi seri atas.',
+    letters: ['sin', 'shad', 'tsa'],
+  },
+  {
+    id: 'dal-dhad',
+    label: 'د vs ض',
+    desc: 'Ujung lidah vs Tepi lidah ke geraham',
+    diffNote: 'د memakai ujung lidah ke pangkal gigi seri atas, sedangkan ض menekan tepi/sisi lidah ke dinding dalam geraham atas sambil mengangkat pangkal lidah.',
+    letters: ['dal', 'dhad'],
+  },
+  {
+    id: 'dzal-zay-zha',
+    label: 'ذ vs ز vs ظ',
+    desc: 'Ujung gigi tipis vs Desis vs Tebal',
+    diffNote: 'ذ dan ظ ujung lidahnya keluar menyentuh ujung gigi seri atas (ظ pangkal lidahnya terangkat tebal), sedangkan ز ujung lidahnya masuk di belakang gigi bawah.',
+    letters: ['dzal', 'zay', 'zha'],
+  },
+  {
+    id: 'qaf-kaf',
+    label: 'ق vs ك',
+    desc: 'Pangkal lidah belakang vs agak maju',
+    diffNote: 'ق menempel lebih mundur di langit-langit lunak dekat anak tekak (tebal & memantul), sedangkan ك lebih maju ke langit-langit keras dengan hembusan halus.',
+    letters: ['qaf', 'kaf'],
+  },
+  {
+    id: 'ain-hamzah',
+    label: 'ع vs ء',
+    desc: 'Tenggorokan tengah vs bawah',
+    diffNote: 'ء keluar dari pangkal tenggorokan paling bawah (pita suara mengatup tegas), sedangkan ع keluar dari tenggorokan tengah saat epiglotis menyempit mengalir.',
+    letters: ['ain', 'hamzah'],
+  },
+  {
+    id: 'ba-fa-mim',
+    label: 'ب vs ف vs م',
+    desc: 'Bibir rapat vs Bibir-gigi vs Dengung',
+    diffNote: 'ب merapatkan dua bibir kuat lalu memantul, م merapatkan bibir lembut sambil mengalirkan dengung ke hidung, dan ف mempertemukan perut bibir bawah dengan ujung gigi seri atas.',
+    letters: ['ba', 'fa', 'mim'],
+  },
 ];
 
 const NEUTRAL_POSE = {
@@ -654,6 +702,46 @@ export const HIJAIYAH_LETTERS = [
     pose: makePose({ jawOpen: 0.34, tipY: -0.03, tipZ: -0.03, throatPinch: 0.92, throatZone: 0 }),
   },
 ];
+
+export const TAHSIN_EXTRAS = {
+  alif:   { drills: ['بَا', 'قَا', 'مَا', 'لَا'], quranExample: { arabic: 'قَالَ', latin: 'Qāla', surah: 'Al-Baqarah: 30' } },
+  ba:     { drills: ['بَ', 'بِ', 'بُ', 'أَبْ'], quranExample: { arabic: 'بِسْمِ', latin: 'Bismi', surah: 'Al-Fatihah: 1' } },
+  ta:     { drills: ['تَ', 'تِ', 'تُ', 'أَتْ'], quranExample: { arabic: 'التِّينِ', latin: 'At-Tīni', surah: 'At-Tin: 1' } },
+  tsa:    { drills: ['ثَ', 'ثِ', 'ثُ', 'أَثْ'], quranExample: { arabic: 'الْكَوْثَرَ', latin: 'Al-Kautsara', surah: 'Al-Kautsar: 1' } },
+  jim:    { drills: ['جَ', 'جِ', 'جُ', 'أَجْ'], quranExample: { arabic: 'وَالْفَجْرِ', latin: 'Wal-Fajri', surah: 'Al-Fajr: 1' } },
+  ha:     { drills: ['حَ', 'حِ', 'حُ', 'أَحْ'], quranExample: { arabic: 'الْحَمْدُ', latin: 'Al-Ḥamdu', surah: 'Al-Fatihah: 2' } },
+  kha:    { drills: ['خَ', 'خِ', 'خُ', 'أَخْ'], quranExample: { arabic: 'خَلَقَ', latin: 'Khalaqa', surah: 'Al-\'Alaq: 1' } },
+  dal:    { drills: ['دَ', 'دِ', 'دُ', 'أَدْ'], quranExample: { arabic: 'أَحَدٌ', latin: 'Aḥadun', surah: 'Al-Ikhlas: 1' } },
+  dzal:   { drills: ['ذَ', 'ذِ', 'ذُ', 'أَذْ'], quranExample: { arabic: 'الَّذِي', latin: 'Alladzī', surah: 'Al-Ma\'un: 1' } },
+  ra:     { drills: ['رَ', 'رِ', 'رُ', 'أَرْ'], quranExample: { arabic: 'الرَّحْمَٰنِ', latin: 'Ar-Raḥmāni', surah: 'Al-Fatihah: 1' } },
+  zay:    { drills: ['زَ', 'زِ', 'زُ', 'أَزْ'], quranExample: { arabic: 'الزَّيْتُونِ', latin: 'Az-Zaitūni', surah: 'At-Tin: 1' } },
+  sin:    { drills: ['سَ', 'سِ', 'سُ', 'أَسْ'], quranExample: { arabic: 'النَّاسِ', latin: 'An-Nāsi', surah: 'An-Nas: 1' } },
+  syin:   { drills: ['شَ', 'شِ', 'شُ', 'أَشْ'], quranExample: { arabic: 'وَالشَّمْسِ', latin: 'Wasy-Syamsi', surah: 'Asy-Syams: 1' } },
+  shad:   { drills: ['صَ', 'صِ', 'صُ', 'أَصْ'], quranExample: { arabic: 'الصِّرَاطَ', latin: 'Aṣ-Ṣirāṭa', surah: 'Al-Fatihah: 6' } },
+  dhad:   { drills: ['ضَ', 'ضِ', 'ضُ', 'أَضْ'], quranExample: { arabic: 'الضَّالِّينَ', latin: 'Aḍ-Ḍāllīna', surah: 'Al-Fatihah: 7' } },
+  tha:    { drills: ['طَ', 'طِ', 'طُ', 'أَطْ'], quranExample: { arabic: 'الطَّارِقِ', latin: 'Aṭ-Ṭāriqi', surah: 'Ath-Thariq: 1' } },
+  zha:    { drills: ['ظَ', 'ظِ', 'ظُ', 'أَظْ'], quranExample: { arabic: 'الْعَظِيمِ', latin: 'Al-\'Aẓīmi', surah: 'Al-Waqi\'ah: 74' } },
+  ain:    { drills: ['عَ', 'عِ', 'عُ', 'أَعْ'], quranExample: { arabic: 'نَعْبُدُ', latin: 'Na\'budu', surah: 'Al-Fatihah: 5' } },
+  ghain:  { drills: ['غَ', 'غِ', 'غُ', 'أَغْ'], quranExample: { arabic: 'غَيْرِ', latin: 'Ghairi', surah: 'Al-Fatihah: 7' } },
+  fa:     { drills: ['فَ', 'فِ', 'فُ', 'أَفْ'], quranExample: { arabic: 'الْفَلَقِ', latin: 'Al-Falaqi', surah: 'Al-Falaq: 1' } },
+  qaf:    { drills: ['قَ', 'قِ', 'قُ', 'أَقْ'], quranExample: { arabic: 'قُلْ', latin: 'Qul', surah: 'Al-Ikhlas: 1' } },
+  kaf:    { drills: ['كَ', 'كِ', 'كُ', 'أَكْ'], quranExample: { arabic: 'إِيَّاكَ', latin: 'Iyyāka', surah: 'Al-Fatihah: 5' } },
+  lam:    { drills: ['لَ', 'لِ', 'لُ', 'أَلْ'], quranExample: { arabic: 'اللَّهِ', latin: 'Allāhi', surah: 'Al-Fatihah: 1' } },
+  mim:    { drills: ['مَ', 'مِ', 'مُ', 'أَمْ'], quranExample: { arabic: 'مَالِكِ', latin: 'Māliki', surah: 'Al-Fatihah: 4' } },
+  nun:    { drills: ['نَ', 'نِ', 'نُ', 'أَنْ'], quranExample: { arabic: 'نَسْتَعِينُ', latin: 'Nasta\'īnu', surah: 'Al-Fatihah: 5' } },
+  haa:    { drills: ['هَ', 'هِ', 'هُ', 'أَهْ'], quranExample: { arabic: 'اهْدِنَا', latin: 'Ihdinā', surah: 'Al-Fatihah: 6' } },
+  waw:    { drills: ['وَ', 'وِ', 'وُ', 'أَوْ'], quranExample: { arabic: 'وَالْعَصْرِ', latin: 'Wal-\'Aṣri', surah: 'Al-\'Ashr: 1' } },
+  ya:     { drills: ['يَ', 'يِ', 'يُ', 'أَيْ'], quranExample: { arabic: 'يَوْمِ', latin: 'Yaumi', surah: 'Al-Fatihah: 4' } },
+  hamzah: { drills: ['أَ', 'إِ', 'أُ', 'أَأْ'], quranExample: { arabic: 'اقْرَأْ', latin: 'Iqra\'', surah: 'Al-\'Alaq: 1' } },
+};
+
+HIJAIYAH_LETTERS.forEach((l) => {
+  const extra = TAHSIN_EXTRAS[l.id];
+  if (extra) {
+    l.drills = extra.drills;
+    l.quranExample = extra.quranExample;
+  }
+});
 
 export function getLetterById(id) {
   return HIJAIYAH_LETTERS.find((l) => l.id === id) || HIJAIYAH_LETTERS[0];

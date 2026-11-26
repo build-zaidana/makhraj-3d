@@ -1,12 +1,12 @@
 /**
- * AudioManager — Credible Hijaiyah Pronunciation Playback + Live Amplitude Analysis
+ * AudioManager — Reliable Offline Hijaiyah Pronunciation Engine + Live Amplitude Sync
  *
- * Plays pre-verified native Arabic Qari recordings bundled locally in public/audio/*.mp3
- * via Web Audio API (AudioContext + AnalyserNode) so:
- *  - Works 100% offline during class demos (zero broken CDN links!)
- *  - Supports slow-motion playback speed (0.72x) in sync with Slow-Mo 3D animation
- *  - Feeds real-time RMS voice amplitude back into the 3D shaders & vocal cords!
- *  - Gracefully falls back to Web Speech API (ar-SA) if any file cannot be decoded.
+ * Features:
+ *  - Monotonic playback sequence token prevents overlapping audio on rapid clicks
+ *  - Plays 29 verified native Arabic recordings from public/audio/*.mp3 via Web Audio API
+ *  - Supports slow-motion playback (0.75x) synced to 3D animation
+ *  - Supports playback of user-recorded Blob URLs for side-by-side self-comparison
+ *  - Streams live RMS amplitude [0..1] to animate 3D vocal folds, beacon, and airflow
  */
 
 export class AudioManager {
@@ -16,9 +16,11 @@ export class AudioManager {
     this.dataArray = null;
     this.bufferCache = new Map();
     this.activeSource = null;
+    this.activeHtmlAudio = null;
     this.isPlaying = false;
     this.muted = false;
     this._fallbackLevel = 0;
+    this._playSeq = 0;
   }
 
   _ensureContext() {
@@ -33,31 +35,54 @@ export class AudioManager {
       this.analyser.connect(this.ctx.destination);
     }
     if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      this.ctx.resume().catch(() => {});
     }
     return this.ctx;
   }
 
   stop() {
+    this._playSeq += 1;
     if (this.activeSource) {
       try {
+        this.activeSource.onended = null;
         this.activeSource.stop();
       } catch {
-        // Ignore already-stopped AudioBufferSourceNode
+        // Ignore already-stopped node
       }
-      this.activeSource.disconnect();
+      try {
+        this.activeSource.disconnect();
+      } catch {
+        // Ignore disconnect error
+      }
       this.activeSource = null;
     }
+    if (this.activeHtmlAudio) {
+      try {
+        this.activeHtmlAudio.pause();
+        this.activeHtmlAudio.currentTime = 0;
+      } catch {
+        // Ignore HTML audio stop error
+      }
+      this.activeHtmlAudio = null;
+    }
     if (window.speechSynthesis) {
-      window.speechSynthesis.cancel();
+      try {
+        window.speechSynthesis.cancel();
+      } catch {
+        // Ignore speech cancel error
+      }
     }
     this.isPlaying = false;
     this._fallbackLevel = 0;
   }
 
   async playLetter(letter, { slowMotion = false, onEnd = null } = {}) {
-    if (this.muted || !letter) return;
+    if (this.muted || !letter) {
+      if (onEnd) onEnd();
+      return false;
+    }
     this.stop();
+    const seq = this._playSeq;
 
     const ctx = this._ensureContext();
     const url = `./audio/${letter.audioFile}`;
@@ -69,53 +94,106 @@ export class AudioManager {
           const resp = await fetch(url);
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
           const arrayBuf = await resp.arrayBuffer();
+          if (seq !== this._playSeq) return false;
           buffer = await ctx.decodeAudioData(arrayBuf);
           this.bufferCache.set(url, buffer);
         }
 
-        const source = ctx.createBufferSource();
-        source.buffer = buffer;
-        source.playbackRate.value = slowMotion ? 0.75 : 1.0;
-        source.connect(this.analyser);
+        if (seq !== this._playSeq) return false;
 
-        this.activeSource = source;
-        this.isPlaying = true;
+        return await new Promise((resolve) => {
+          const source = ctx.createBufferSource();
+          source.buffer = buffer;
+          source.playbackRate.value = slowMotion ? 0.75 : 1.0;
+          source.connect(this.analyser);
 
-        source.onended = () => {
-          if (this.activeSource === source) {
-            this.activeSource = null;
-            this.isPlaying = false;
-          }
-          if (onEnd) onEnd();
-        };
+          this.activeSource = source;
+          this.isPlaying = true;
 
-        source.start(0);
-        return;
+          source.onended = () => {
+            if (this.activeSource === source) {
+              this.activeSource = null;
+              this.isPlaying = false;
+            }
+            if (onEnd) onEnd();
+            resolve(true);
+          };
+
+          source.start(0);
+        });
       } catch (err) {
+        if (seq !== this._playSeq) return false;
         console.warn(`Audio MP3 load failed for ${url}, falling back to SpeechSynthesis:`, err);
       }
     }
 
     // Fallback: Web Speech API Arabic (ar-SA)
-    if (window.speechSynthesis) {
-      const utter = new SpeechSynthesisUtterance(letter.ttsText || letter.char);
-      utter.lang = 'ar-SA';
-      utter.rate = slowMotion ? 0.65 : 0.9;
-      this.isPlaying = true;
-      this._fallbackLevel = 0.6;
-      utter.onend = () => {
-        this.isPlaying = false;
-        this._fallbackLevel = 0;
-        if (onEnd) onEnd();
-      };
-      window.speechSynthesis.speak(utter);
+    if (window.speechSynthesis && seq === this._playSeq) {
+      return await new Promise((resolve) => {
+        const utter = new SpeechSynthesisUtterance(letter.ttsText || letter.char);
+        utter.lang = 'ar-SA';
+        utter.rate = slowMotion ? 0.65 : 0.9;
+        this.isPlaying = true;
+        this._fallbackLevel = 0.6;
+        utter.onend = () => {
+          if (seq === this._playSeq) {
+            this.isPlaying = false;
+            this._fallbackLevel = 0;
+          }
+          if (onEnd) onEnd();
+          resolve(true);
+        };
+        utter.onerror = () => {
+          if (seq === this._playSeq) {
+            this.isPlaying = false;
+            this._fallbackLevel = 0;
+          }
+          if (onEnd) onEnd();
+          resolve(false);
+        };
+        window.speechSynthesis.speak(utter);
+      });
     }
+
+    if (onEnd) onEnd();
+    return false;
   }
 
   /**
-   * Returns normalized live voice amplitude [0..1] for syncing 3D vocal cords,
-   * Makhraj beacon pulse, and airflow particles with the Qari's voice.
+   * Plays a locally recorded user Blob URL (never leaves the device).
    */
+  async playRecordingUrl(blobUrl, { onEnd = null } = {}) {
+    if (!blobUrl) {
+      if (onEnd) onEnd();
+      return false;
+    }
+    this.stop();
+    const seq = this._playSeq;
+
+    return await new Promise((resolve) => {
+      const audio = new Audio(blobUrl);
+      this.activeHtmlAudio = audio;
+      this.isPlaying = true;
+      this._fallbackLevel = 0.5;
+
+      const finish = (ok) => {
+        if (this.activeHtmlAudio === audio) {
+          this.activeHtmlAudio = null;
+          this.isPlaying = false;
+          this._fallbackLevel = 0;
+        }
+        if (onEnd) onEnd();
+        resolve(ok);
+      };
+
+      audio.onended = () => finish(true);
+      audio.onerror = () => finish(false);
+      audio.play().catch(() => {
+        if (seq === this._playSeq) finish(false);
+      });
+    });
+  }
+
   getAudioLevel() {
     if (!this.isPlaying) return 0;
     if (this.analyser && this.dataArray && this.activeSource) {

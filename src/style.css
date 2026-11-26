@@ -232,13 +232,94 @@ body {
   position: absolute;
   top: 0;
   left: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
   display: inline-flex;
   align-items: center;
   gap: 7px;
   pointer-events: auto;
-  cursor: default;
+  cursor: pointer;
   transition: opacity 0.2s ease;
   will-change: transform, opacity;
+}
+
+/* ---------- Floating Organ Explorer Card (Clickable 3D Pins) ---------- */
+.organ-explorer {
+  position: fixed;
+  left: 50%;
+  bottom: 102px;
+  transform: translateX(-50%);
+  z-index: 16;
+  width: min(370px, calc(100vw - 40px));
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+  padding: 13px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.oe-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.oe-head strong {
+  display: block;
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+.oe-head small {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.oe-role {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.oe-letters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.oe-letter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--surface-solid);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: all 0.14s;
+}
+
+.oe-letter-btn .ar {
+  font-family: 'Amiri', serif;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.oe-letter-btn:hover,
+.oe-letter-btn.active {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
 }
 
 .anat-pin .pin-dot {
@@ -733,10 +814,38 @@ body.focus-3d .side-panel {
 }
 
 .hero-badge-row {
-  margin-top: 5px;
+  margin-top: 6px;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
+}
+
+.mastery-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-solid);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.mastery-pill:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.mastery-pill.mastered {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
 }
 
 .makhraj-badge {
@@ -985,6 +1094,358 @@ body.focus-3d .side-panel {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-fg);
+}
+
+/* Voice Practice Recorder Box */
+.voice-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: var(--radius-md);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-subtle);
+}
+
+.voice-row {
+  display: flex;
+  gap: 6px;
+}
+
+.voice-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--surface-solid);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.14s;
+}
+
+.voice-btn:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+}
+
+.voice-btn.recording,
+.voice-btn.playing {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+}
+
+.mic-meter-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mic-meter-track {
+  width: 100%;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.mic-meter-fill {
+  width: 6%;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.06s linear;
+}
+
+.mic-meter-caption {
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+/* Tahsin Harakat Drills & Quranic Word Example */
+.tahsin-box {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 13px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tahsin-box h3 {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+
+.drill-chips {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.drill-chip {
+  padding: 8px 4px 7px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--surface-solid);
+  color: var(--text);
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.14s;
+}
+
+.drill-chip:hover {
+  border-color: var(--accent);
+  background: var(--surface-hover);
+}
+
+.drill-chip .dc-ar {
+  font-family: 'Amiri', serif;
+  font-size: 23px;
+  line-height: 1.15;
+}
+
+.drill-chip .dc-lbl {
+  font-size: 9.5px;
+  color: var(--text-muted);
+}
+
+.quran-example {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--surface-solid);
+  border: 1px solid var(--border-subtle);
+}
+
+.quran-word {
+  font-family: 'Amiri', serif;
+  font-size: 27px;
+  line-height: 1.25;
+  color: var(--text);
+}
+
+.quran-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+
+.quran-meta strong {
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.quran-meta small {
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+/* Live A/B Morph Toggle & Diff Note */
+.morph-toggle-btn {
+  padding: 3px 9px;
+  border-radius: 7px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-solid);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.morph-toggle-btn:hover,
+.morph-toggle-btn.active {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+}
+
+.compare-diff {
+  margin: 5px 0 8px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.progress-detail-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+
+.progress-detail-btn:hover {
+  background: var(--surface-elevated);
+}
+
+/* Quiz Scope Filter Pills & Round Summary */
+.quiz-scope-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+
+.quiz-scope-row button {
+  padding: 6px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-elevated);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.14s;
+}
+
+.quiz-scope-row button:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.quiz-scope-row button.active {
+  background: var(--surface-solid);
+  color: var(--text);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.summary-score-wrap {
+  text-align: center;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.summary-score {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-caption {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.summary-missed-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.summary-missed-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Curriculum & Mastery Modal */
+.curr-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.curr-kpis > div {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 11px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.curr-kpis strong {
+  font-size: 16px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.curr-makhraj-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.curr-row {
+  padding: 10px 12px;
+  border-radius: 11px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.curr-row-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.curr-row-head strong {
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.curr-row-head small {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Dock Tile Mastered Indicator (distinct solid dot vs learned subtle underline) */
+.letter-tile.mastered::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.letter-tile.active.mastered::before {
+  background: var(--accent-fg);
 }
 
 /* Pronunciation Guide */
@@ -2118,6 +2579,10 @@ input[type='range']::-moz-range-thumb {
     border-radius: 14px;
     box-shadow: var(--shadow-card);
     padding: 8px 11px;
+  }
+
+  .organ-explorer {
+    bottom: 150px;
   }
 
   .mobile-letter-summary {

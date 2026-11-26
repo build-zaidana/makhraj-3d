@@ -16,17 +16,28 @@ import { AirflowParticles } from './scene/AirflowParticles.js';
 import { AnatomicalLabels } from './scene/AnatomicalLabels.js';
 import { ArticulationController } from './scene/ArticulationController.js';
 import { AudioManager } from './audio/AudioManager.js';
+import { VoiceRecorder } from './audio/VoiceRecorder.js';
 import { ProgressStore } from './learning/ProgressStore.js';
 import { QuizManager } from './learning/QuizManager.js';
 
 // ============================================================================
-// 0. WebGL Availability Guard & Shared Asset LoadingManager
+// 0. WebGL Guard, Offline PWA Service Worker & Shared Asset LoadingManager
 // ============================================================================
 const loadingScreen = document.getElementById('loading-screen');
 const loadingBar = document.getElementById('loading-bar');
 const loadingStatus = document.getElementById('loading-status');
 const webglFallback = document.getElementById('webgl-fallback');
 const metaThemeColor = document.getElementById('meta-theme-color');
+
+if (
+  'serviceWorker' in navigator &&
+  window.location.hostname !== 'localhost' &&
+  window.location.hostname !== '127.0.0.1'
+) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
 
 function hasWebGL() {
   try {
@@ -80,9 +91,9 @@ const vocalTract = new VocalTract(headGroup, loadingManager);
 const tongue = new TongueMesh(headGroup);
 const highlighter = new MakhrajHighlighter(headGroup);
 const airflow = new AirflowParticles(headGroup);
-const anatomicalLabels = new AnatomicalLabels(labelsLayer, headGroup);
 const controller = new ArticulationController();
 const audioManager = new AudioManager();
+const voiceRecorder = new VoiceRecorder();
 
 // ============================================================================
 // 2. Application State (with Deep-Link `?huruf=` Support)
@@ -101,12 +112,16 @@ const state = {
   autoCamera: savedPrefs.autoCamera,
   slowMotion: false,
   loopPractice: false,
+  compareMorphActive: false,
   viewMode: savedPrefs.viewMode,
   clipX: savedPrefs.clipX,
   opacity: savedPrefs.opacity,
 };
 
 let loopTimer = null;
+let compareMorphTimer = null;
+let compareMorphGroup = null;
+let compareMorphIdx = 0;
 
 // ============================================================================
 // 3. DOM Elements
@@ -118,10 +133,20 @@ const elWelcomeStrip = document.getElementById('welcome-strip');
 const btnStartAlif = document.getElementById('btn-start-alif');
 const btnDismissWelcome = document.getElementById('btn-dismiss-welcome');
 
+// Organ Explorer (clickable 3D pins)
+const elOrganExplorer = document.getElementById('organ-explorer');
+const elOeTitle = document.getElementById('oe-title');
+const elOeSub = document.getElementById('oe-sub');
+const elOeRole = document.getElementById('oe-role');
+const elOeLetters = document.getElementById('oe-letters');
+const btnCloseOe = document.getElementById('btn-close-oe');
+
 const elChar = document.getElementById('active-char');
 const elPhonetic = document.getElementById('active-phonetic');
 const elActiveIndex = document.getElementById('active-index');
 const elBadge = document.getElementById('active-makhraj-badge');
+const btnMarkMastered = document.getElementById('btn-mark-mastered');
+const elMasteryLabel = document.getElementById('mastery-pill-label');
 const elSifat = document.getElementById('active-sifat');
 const elSifatHint = document.getElementById('sifat-hint');
 const elSifatDef = document.getElementById('sifat-def');
@@ -129,12 +154,31 @@ const elOrganMover = document.getElementById('organ-mover');
 const elOrganTarget = document.getElementById('organ-target');
 const elHowTo = document.getElementById('active-howto');
 const elMistake = document.getElementById('active-mistake');
-const elComparePairs = document.getElementById('compare-pairs');
-const elCompareCaption = document.getElementById('compare-caption');
 
+// Tahsin Harakat & Quranic Example
+const elDrillChips = document.getElementById('drill-chips');
+const elQuranArabic = document.getElementById('quran-arabic');
+const elQuranLatin = document.getElementById('quran-latin');
+const elQuranSurah = document.getElementById('quran-surah');
+
+// Voice Recorder UI
+const btnRecord = document.getElementById('btn-record');
+const elRecordLabel = document.getElementById('btn-record-label');
+const btnPlayMine = document.getElementById('btn-play-mine');
+const btnAbAudio = document.getElementById('btn-ab-audio');
+const elMicMeterWrap = document.getElementById('mic-meter-wrap');
+const elMicMeterFill = document.getElementById('mic-meter-fill');
+
+// Compare & A/B 3D Morph UI
+const elComparePairs = document.getElementById('compare-pairs');
+const elCompareDiff = document.getElementById('compare-diff');
+const btnCompareMorph = document.getElementById('btn-compare-morph');
+
+// Progress & Curriculum
 const elProgressEncouragement = document.getElementById('progress-encouragement');
 const elProgressLabel = document.getElementById('progress-label');
 const elProgressFill = document.getElementById('progress-fill');
+const btnOpenCurriculum = document.getElementById('btn-open-curriculum');
 
 const elMobileChar = document.getElementById('mobile-char');
 const elMobilePhonetic = document.getElementById('mobile-phonetic');
@@ -160,7 +204,7 @@ const btnFocus3D = document.getElementById('btn-focus-3d');
 const btnShare = document.getElementById('btn-share');
 const btnResetProgress = document.getElementById('btn-reset-progress');
 
-// Studio Quick-Bar (Desktop Bottom-Left)
+// Studio Quick-Bar
 const qbtnFocus = document.getElementById('qbtn-focus');
 const qbtnSlice = document.getElementById('qbtn-slice');
 const qbtnAirflow = document.getElementById('qbtn-airflow');
@@ -173,6 +217,9 @@ const viewQuiz = document.getElementById('view-quiz');
 
 // Quiz elements
 const quizModeButtons = document.querySelectorAll('#quiz-mode-buttons button');
+const quizScopeButtons = document.querySelectorAll('#quiz-scope-buttons button');
+const elQuizQuestionCard = document.getElementById('quiz-question-card');
+const elQuizSummaryCard = document.getElementById('quiz-summary-card');
 const elQuizMystery = document.getElementById('quiz-mystery-glyph');
 const elQuizPrompt = document.getElementById('quiz-prompt');
 const elQuizOptions = document.getElementById('quiz-options');
@@ -181,11 +228,16 @@ const elQuizFeedbackTitle = document.getElementById('quiz-feedback-title');
 const elQuizFeedbackBody = document.getElementById('quiz-feedback-body');
 const btnQuizReplay = document.getElementById('btn-quiz-replay');
 const btnQuizNext = document.getElementById('btn-quiz-next');
+const elQRound = document.getElementById('q-stat-round');
 const elQCorrect = document.getElementById('q-stat-correct');
-const elQTotal = document.getElementById('q-stat-total');
 const elQStreak = document.getElementById('q-stat-streak');
+const elSummaryScore = document.getElementById('summary-score');
+const elSummaryCaption = document.getElementById('summary-caption');
+const elSummaryMissedWrap = document.getElementById('summary-missed-wrap');
+const elSummaryMissedList = document.getElementById('summary-missed-list');
+const btnQuizNewRound = document.getElementById('btn-quiz-new-round');
 
-// Controls & Layer Dissection elements
+// Controls & Layer Dissection
 const sliderCutaway = document.getElementById('slider-cutaway');
 const valCutaway = document.getElementById('val-cutaway');
 const sliderOpacity = document.getElementById('slider-opacity');
@@ -211,6 +263,15 @@ const gridBody = document.getElementById('makhraj-grid-body');
 const gridSearchInput = document.getElementById('grid-search-input');
 const btnCloseGrid = document.getElementById('btn-close-grid');
 
+const curriculumModal = document.getElementById('curriculum-modal');
+const elCurrMastered = document.getElementById('curr-mastered');
+const elCurrLearned = document.getElementById('curr-learned');
+const elCurrAccuracy = document.getElementById('curr-accuracy');
+const elCurrMakhrajList = document.getElementById('curr-makhraj-list');
+const btnCloseCurriculum = document.getElementById('btn-close-curriculum');
+const btnCurrCloseBottom = document.getElementById('btn-curr-close-bottom');
+const btnCurrPracticeWeak = document.getElementById('btn-curr-practice-weak');
+
 const helpModal = document.getElementById('help-modal');
 const btnHelpModal = document.getElementById('btn-help-modal');
 const btnCloseHelp = document.getElementById('btn-close-help');
@@ -220,26 +281,61 @@ const infoModal = document.getElementById('info-modal');
 const btnInfoModal = document.getElementById('btn-info-modal');
 const btnCloseModal = document.getElementById('btn-close-modal');
 
+// Initialize clickable 3D Organ Labels with Organ Explorer callback
+const anatomicalLabels = new AnatomicalLabels(labelsLayer, headGroup, {
+  onSelectOrgan: (organ) => openOrganExplorer(organ),
+});
+
 let toastTimer = null;
 function showToast(msg) {
   elToast.textContent = msg;
   elToast.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => elToast.classList.remove('show'), 2200);
+  toastTimer = setTimeout(() => elToast.classList.remove('show'), 2400);
 }
 
 // ============================================================================
-// 4. Dual Monochrome Studio Theme (Soft Light Default <-> Matte Dark Toggle)
+// 4. Organ Explorer (Click Any 3D Organ Pin -> Jump to Its Letters!)
+// ============================================================================
+function openOrganExplorer(organ) {
+  elOeTitle.textContent = organ.label;
+  elOeSub.textContent = organ.sub;
+  elOeRole.textContent = organ.role;
+  elOeLetters.innerHTML = '';
+
+  organ.letters.forEach((id) => {
+    const l = getLetterById(id);
+    const btn = document.createElement('button');
+    btn.className = `oe-letter-btn ${l.id === state.activeLetter.id ? 'active' : ''}`;
+    btn.innerHTML = `<span class="ar">${l.char}</span><span>${l.phonetic.split(' ')[0]}</span>`;
+    btn.onclick = () => {
+      if (state.activeTab === 'quiz') switchTab('learn');
+      selectLetter(l, { playAudio: true });
+      elOeLetters.querySelectorAll('.oe-letter-btn').forEach((b) =>
+        b.classList.toggle('active', b === btn)
+      );
+    };
+    elOeLetters.appendChild(btn);
+  });
+
+  elOrganExplorer.classList.remove('hidden');
+}
+
+function closeOrganExplorer() {
+  elOrganExplorer.classList.add('hidden');
+}
+
+// ============================================================================
+// 5. Dual Monochrome Studio Theme (Soft Light Default <-> Matte Dark Toggle)
 // ============================================================================
 function applyTheme(theme, persist = true) {
   const isLight = theme === 'light';
   state.theme = isLight ? 'light' : 'dark';
   document.documentElement.dataset.theme = state.theme;
   if (metaThemeColor) {
-    metaThemeColor.setAttribute('content', isLight ? '#efefe9' : '#101010');
+    metaThemeColor.setAttribute('content', isLight ? '#e8e8e2' : '#101010');
   }
 
-  // Toggle icon/label shows the theme user can switch to
   iconMoon.classList.toggle('hidden', !isLight);
   iconSun.classList.toggle('hidden', isLight);
   if (elThemeLabel) elThemeLabel.textContent = isLight ? 'Gelap' : 'Terang';
@@ -253,7 +349,7 @@ function applyTheme(theme, persist = true) {
 }
 
 // ============================================================================
-// 5. Practice Loop Controller (Hands-Free Pronunciation Mirroring)
+// 6. Practice Loop & Live A/B 3D Morph Comparison Controllers
 // ============================================================================
 function stopPracticeLoop() {
   state.loopPractice = false;
@@ -278,6 +374,7 @@ function togglePracticeLoop() {
     stopPracticeLoop();
     showToast('Mode ulang dimatikan');
   } else {
+    stopCompareMorph();
     state.loopPractice = true;
     btnLoop.classList.add('active');
     triggerPronounce(state.activeLetter);
@@ -286,24 +383,186 @@ function togglePracticeLoop() {
   }
 }
 
-// ============================================================================
-// 6. Progress, Friendly Filters, 29-Letter Dock & Searchable Peta 29
-// ============================================================================
-function updateProgressUI() {
-  const count = store.getLearnedCount();
-  const total = HIJAIYAH_LETTERS.length;
-  elProgressLabel.textContent = `${count} / ${total} huruf`;
-  elProgressFill.style.width = `${Math.round((count / total) * 100)}%`;
+function stopCompareMorph() {
+  state.compareMorphActive = false;
+  clearInterval(compareMorphTimer);
+  compareMorphTimer = null;
+  compareMorphGroup = null;
+  btnCompareMorph.classList.remove('active');
+  btnCompareMorph.textContent = 'Animasi A ↔ B';
+}
 
-  if (count === 0) elProgressEncouragement.textContent = 'Progres Belajar — Yuk mulai!';
-  else if (count < 10) elProgressEncouragement.textContent = 'Bagus, lanjutkan pelan-pelan!';
-  else if (count < 20) elProgressEncouragement.textContent = 'Sudah makin terbiasa!';
-  else if (count < total) elProgressEncouragement.textContent = 'Tinggal sedikit lagi selesai!';
-  else elProgressEncouragement.textContent = 'Luar biasa, semua 29 huruf dipelajari!';
+function toggleCompareMorph() {
+  if (state.compareMorphActive) {
+    stopCompareMorph();
+    showToast('Animasi perbandingan dihentikan');
+    return;
+  }
+
+  const group = CONFUSION_PAIRS.find((g) => g.letters.includes(state.activeLetter.id));
+  if (!group) return;
+
+  stopPracticeLoop();
+  state.compareMorphActive = true;
+  compareMorphGroup = group;
+  compareMorphIdx = Math.max(0, group.letters.indexOf(state.activeLetter.id));
+  btnCompareMorph.classList.add('active');
+  btnCompareMorph.textContent = 'Hentikan A ↔ B';
+  showToast(`Membandingkan gerakan 3D: ${group.label}`);
+
+  const stepMorph = () => {
+    if (!state.compareMorphActive || !compareMorphGroup) return;
+    compareMorphIdx = (compareMorphIdx + 1) % compareMorphGroup.letters.length;
+    const nextLetter = getLetterById(compareMorphGroup.letters[compareMorphIdx]);
+    selectLetter(nextLetter, { playAudio: true, keepMorph: true });
+  };
+
+  compareMorphTimer = setInterval(stepMorph, state.slowMotion ? 3100 : 2200);
+}
+
+// ============================================================================
+// 7. On-Device Voice Practice Recorder UI
+// ============================================================================
+function updateVoiceUI(letterId = state.activeLetter.id) {
+  const hasRec = voiceRecorder.hasRecording(letterId);
+  btnPlayMine.classList.toggle('hidden', !hasRec);
+  btnAbAudio.classList.toggle('hidden', !hasRec);
+  btnRecord.classList.toggle('recording', voiceRecorder.isRecording);
+  elMicMeterWrap.classList.toggle('hidden', !voiceRecorder.isRecording);
+  elRecordLabel.textContent = voiceRecorder.isRecording
+    ? 'Berhenti Rekam'
+    : hasRec
+    ? 'Rekam Ulang'
+    : 'Rekam Suaramu';
+}
+
+async function handleRecordToggle() {
+  if (voiceRecorder.isRecording) {
+    voiceRecorder.stop();
+    updateVoiceUI();
+    return;
+  }
+
+  stopPracticeLoop();
+  stopCompareMorph();
+  audioManager.stop();
+  const targetId = state.activeLetter.id;
+
+  const started = await voiceRecorder.start(targetId, {
+    maxDurationMs: 4000,
+    onComplete: (_url, finishedId) => {
+      updateVoiceUI(state.activeLetter.id);
+      if (finishedId === state.activeLetter.id) {
+        showToast('Rekaman tersimpan. Klik "Bandingkan" untuk cek pelafalanmu!');
+      }
+    },
+    onError: (msg) => {
+      updateVoiceUI();
+      showToast(msg);
+    },
+  });
+
+  if (started) {
+    updateVoiceUI(targetId);
+  }
+}
+
+async function handlePlayMine() {
+  const url = voiceRecorder.getRecordingUrl(state.activeLetter.id);
+  if (!url) return;
+  stopPracticeLoop();
+  stopCompareMorph();
+  btnPlayMine.classList.add('playing');
+  await audioManager.playRecordingUrl(url, {
+    onEnd: () => btnPlayMine.classList.remove('playing'),
+  });
+}
+
+async function handleCompareAudioAB() {
+  const url = voiceRecorder.getRecordingUrl(state.activeLetter.id);
+  if (!url) return;
+  stopPracticeLoop();
+  stopCompareMorph();
+
+  btnAbAudio.classList.add('playing');
+  showToast('1. Contoh pelafalan → 2. Suaramu');
+  controller.triggerPronunciation();
+  await audioManager.playLetter(state.activeLetter, { slowMotion: state.slowMotion });
+  await new Promise((r) => setTimeout(r, 320));
+  await audioManager.playRecordingUrl(url, {
+    onEnd: () => btnAbAudio.classList.remove('playing'),
+  });
+  btnAbAudio.classList.remove('playing');
+}
+
+// ============================================================================
+// 8. Mastery, Progress, Curriculum Modal, Filters & Searchable Peta 29
+// ============================================================================
+function updateMasteryPillUI() {
+  const mastered = store.isMastered(state.activeLetter.id);
+  btnMarkMastered.classList.toggle('mastered', mastered);
+  elMasteryLabel.textContent = mastered ? 'Sudah Paham' : 'Tandai Paham';
+}
+
+function updateProgressUI() {
+  const masteredCount = store.getMasteredCount();
+  const learnedCount = store.getLearnedCount();
+  const total = HIJAIYAH_LETTERS.length;
+  elProgressLabel.textContent = `${masteredCount} / ${total} dikuasai`;
+  elProgressFill.style.width = `${Math.round((masteredCount / total) * 100)}%`;
+
+  if (masteredCount === 0 && learnedCount === 0) {
+    elProgressEncouragement.textContent = 'Progres Belajar — Yuk mulai!';
+  } else if (masteredCount < 10) {
+    elProgressEncouragement.textContent = `${learnedCount} huruf dilatih · terus semangat!`;
+  } else if (masteredCount < 20) {
+    elProgressEncouragement.textContent = 'Sudah makin mantap!';
+  } else if (masteredCount < total) {
+    elProgressEncouragement.textContent = 'Tinggal sedikit lagi dikuasai semua!';
+  } else {
+    elProgressEncouragement.textContent = 'MasyaAllah, semua 29 huruf dikuasai!';
+  }
 
   elStrip.querySelectorAll('.letter-tile').forEach((tile) => {
     tile.classList.toggle('learned', store.isLearned(tile.dataset.id));
+    tile.classList.toggle('mastered', store.isMastered(tile.dataset.id));
   });
+  updateMasteryPillUI();
+}
+
+function openCurriculumModal() {
+  const masteredCount = store.getMasteredCount();
+  const learnedCount = store.getLearnedCount();
+  const qStats = store.getQuizStats();
+  const acc = qStats.total > 0 ? Math.round((qStats.correct / qStats.total) * 100) : 0;
+
+  elCurrMastered.textContent = `${masteredCount} / ${HIJAIYAH_LETTERS.length}`;
+  elCurrLearned.textContent = `${learnedCount} / ${HIJAIYAH_LETTERS.length}`;
+  elCurrAccuracy.textContent = qStats.total > 0 ? `${acc}%` : '—';
+
+  elCurrMakhrajList.innerHTML = '';
+  Object.values(MAKHRAJ_CATEGORIES).forEach((cat) => {
+    const letters = HIJAIYAH_LETTERS.filter(
+      (l) => l.makhraj === cat.id || l.secondaryMakhraj === cat.id
+    );
+    const done = letters.filter((l) => store.isMastered(l.id)).length;
+    const pct = Math.round((done / letters.length) * 100);
+
+    const row = document.createElement('div');
+    row.className = 'curr-row';
+    row.innerHTML = `
+      <div class="curr-row-head">
+        <strong>${cat.friendlyName} (${cat.name})</strong>
+        <small>${done} / ${letters.length} dikuasai</small>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" style="width:${pct}%"></div>
+      </div>
+    `;
+    elCurrMakhrajList.appendChild(row);
+  });
+
+  curriculumModal.classList.remove('hidden');
 }
 
 function renderFilterPills() {
@@ -397,7 +656,7 @@ function renderMakhrajGridModal(query = '') {
       const btn = document.createElement('button');
       btn.className = 'grid-tile';
       if (letter.id === state.activeLetter.id) btn.classList.add('active');
-      if (store.isLearned(letter.id)) btn.classList.add('learned');
+      if (store.isMastered(letter.id)) btn.classList.add('learned');
       btn.innerHTML = `
         <span class="gt-ar">${letter.char}</span>
         <span class="gt-latin">${letter.phonetic.split(' ')[0]}</span>
@@ -417,7 +676,7 @@ function renderMakhrajGridModal(query = '') {
   if (totalMatches === 0) {
     const empty = document.createElement('div');
     empty.className = 'grid-empty';
-    empty.textContent = `Tidak ditemukan huruf yang cocok dengan "${query}". Coba ketik nama latin seperti "Dhad", "Qaf", atau "Sin".`;
+    empty.textContent = `Tidak ditemukan huruf yang cocok dengan "${query}". Coba ketik "Dhad", "Qaf", atau "Sin".`;
     gridBody.appendChild(empty);
   }
 }
@@ -445,6 +704,7 @@ function updateDockFilter() {
     tile.classList.toggle('dimmed', !matches);
     tile.classList.toggle('active', !hideActiveInQuiz && letter.id === state.activeLetter.id);
     tile.classList.toggle('learned', store.isLearned(letter.id));
+    tile.classList.toggle('mastered', store.isMastered(letter.id));
   });
 }
 
@@ -453,7 +713,10 @@ function renderCompareButtons(activeLetter) {
   const matchingGroup = CONFUSION_PAIRS.find((g) => g.letters.includes(activeLetter.id));
 
   if (matchingGroup) {
-    elCompareCaption.textContent = matchingGroup.desc;
+    btnCompareMorph.classList.remove('hidden');
+    elCompareDiff.textContent = matchingGroup.diffNote || matchingGroup.desc;
+    elCompareDiff.classList.remove('hidden');
+
     matchingGroup.letters.forEach((id) => {
       const l = getLetterById(id);
       const btn = document.createElement('button');
@@ -463,7 +726,9 @@ function renderCompareButtons(activeLetter) {
       elComparePairs.appendChild(btn);
     });
   } else {
-    elCompareCaption.textContent = 'Sering tertukar';
+    btnCompareMorph.classList.add('hidden');
+    elCompareDiff.classList.add('hidden');
+
     CONFUSION_PAIRS.slice(0, 4).forEach((pair) => {
       const btn = document.createElement('button');
       btn.className = 'compare-btn';
@@ -476,7 +741,7 @@ function renderCompareButtons(activeLetter) {
 }
 
 // ============================================================================
-// 7. Core Letter Selection, Dissection Sync & Pronunciation
+// 9. Core Letter Selection, Tahsin Drills & Pronunciation
 // ============================================================================
 function updateCutawayUI(xVal, persist = true) {
   state.clipX = xVal;
@@ -531,8 +796,14 @@ function applyLetterTo3D(letter, { triggerPulse = false, concealLabels = false }
   }
 }
 
-function selectLetter(letter, { playAudio = false, updateUrl = true } = {}) {
+const DRILL_LABELS = ['Fathah', 'Kasrah', 'Dhammah', 'Sukun'];
+const ALIF_DRILL_LABELS = ['Mad 1', 'Mad 2', 'Mad 3', 'Mad 4'];
+
+function selectLetter(letter, { playAudio = false, updateUrl = true, keepMorph = false } = {}) {
   stopPracticeLoop();
+  if (!keepMorph) stopCompareMorph();
+  if (voiceRecorder.isRecording) voiceRecorder.stop();
+
   state.activeLetter = letter;
   const cat = MAKHRAJ_CATEGORIES[letter.makhraj];
 
@@ -552,6 +823,26 @@ function selectLetter(letter, { playAudio = false, updateUrl = true } = {}) {
 
   elHowTo.textContent = letter.howTo;
   elMistake.textContent = letter.mistakeWarning;
+
+  // Render Tahsin Harakat Drills + Quranic Word Example
+  const drills = letter.drills || [];
+  const labels = letter.id === 'alif' ? ALIF_DRILL_LABELS : DRILL_LABELS;
+  elDrillChips.innerHTML = '';
+  drills.forEach((d, idx) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'drill-chip';
+    chip.title = `Latih bacaan ${labels[idx] || ''}: ${d}`;
+    chip.innerHTML = `<span class="dc-ar">${d}</span><span class="dc-lbl">${labels[idx] || ''}</span>`;
+    chip.onclick = () => triggerPronounce(letter);
+    elDrillChips.appendChild(chip);
+  });
+
+  if (letter.quranExample) {
+    elQuranArabic.textContent = letter.quranExample.arabic;
+    elQuranLatin.textContent = letter.quranExample.latin;
+    elQuranSurah.textContent = letter.quranExample.surah;
+  }
 
   elMobileChar.textContent = letter.char;
   elMobilePhonetic.textContent = letter.phonetic;
@@ -586,6 +877,8 @@ function selectLetter(letter, { playAudio = false, updateUrl = true } = {}) {
     elSifat.appendChild(chip);
   });
 
+  updateMasteryPillUI();
+  updateVoiceUI(letter.id);
   renderCompareButtons(letter);
   updateDockFilter();
 
@@ -615,27 +908,66 @@ function triggerPronounce(letter = state.activeLetter) {
     slowMotion: state.slowMotion,
     onEnd: () => setPlayingUI(false),
   });
-  setTimeout(() => {
-    if (!audioManager.isPlaying) {
-      setPlayingUI(false);
-    }
-  }, state.slowMotion ? 2200 : 1400);
 }
 
 // ============================================================================
-// 8. Interactive Quiz Mode (Warm & Encouraging Feedback)
+// 10. Structured Adaptive Quiz Engine (10-Question Rounds + Summary)
 // ============================================================================
 function updateQuizStatsUI() {
   const stats = store.getQuizStats();
+  const displayIdx = Math.min(quizManager.roundSize, quizManager.roundIndex + 1);
+  elQRound.textContent = `${displayIdx} / ${quizManager.roundSize}`;
   elQCorrect.textContent = stats.correct;
-  elQTotal.textContent = stats.total;
   elQStreak.textContent = stats.streak;
+}
+
+function showQuizRoundSummary() {
+  const summary = quizManager.getRoundSummary();
+  elQuizQuestionCard.classList.add('hidden');
+  elQuizSummaryCard.classList.remove('hidden');
+
+  elSummaryScore.textContent = `${summary.correct} / ${summary.total}`;
+  if (summary.accuracy >= 90) {
+    elSummaryCaption.textContent = `Akurasi ${summary.accuracy}% — Luar biasa! Pelafalanmu sangat mantap.`;
+  } else if (summary.accuracy >= 70) {
+    elSummaryCaption.textContent = `Akurasi ${summary.accuracy}% — Bagus sekali, terus latih huruf yang mirip!`;
+  } else {
+    elSummaryCaption.textContent = `Akurasi ${summary.accuracy}% — Tidak apa-apa, yuk ulangi huruf di bawah dalam 3D!`;
+  }
+
+  if (summary.missedLetters.length > 0) {
+    elSummaryMissedWrap.classList.remove('hidden');
+    elSummaryMissedList.innerHTML = '';
+    summary.missedLetters.forEach((l) => {
+      const btn = document.createElement('button');
+      btn.className = 'compare-btn';
+      btn.innerHTML = `<span class="ar">${l.char}</span> <span>${l.phonetic.split(' ')[0]}</span>`;
+      btn.onclick = () => {
+        switchTab('learn');
+        selectLetter(l, { playAudio: true });
+      };
+      elSummaryMissedList.appendChild(btn);
+    });
+  } else {
+    elSummaryMissedWrap.classList.add('hidden');
+  }
 }
 
 function loadNextQuizQuestion(playSound = true) {
   stopPracticeLoop();
-  const q = quizManager.nextQuestion();
+  stopCompareMorph();
+
+  if (quizManager.isRoundComplete()) {
+    showQuizRoundSummary();
+    return;
+  }
+
+  elQuizSummaryCard.classList.add('hidden');
+  elQuizQuestionCard.classList.remove('hidden');
+
+  const q = quizManager.nextQuestion(store.masteredSet);
   state.activeLetter = q.letter;
+  updateQuizStatsUI();
 
   applyLetterTo3D(q.letter, {
     triggerPulse: true,
@@ -675,12 +1007,14 @@ function handleQuizAnswer(selectedValue) {
   const res = quizManager.submitAnswer(selectedValue);
   if (!res) return;
 
-  const { isCorrect, question } = res;
+  const { isCorrect, question, roundComplete } = res;
   const letter = question.letter;
   const cat = MAKHRAJ_CATEGORIES[letter.makhraj];
 
   store.recordQuizResult(isCorrect);
-  if (isCorrect) store.markLearned(letter.id);
+  if (isCorrect) store.markMastered(letter.id);
+  else store.markLearned(letter.id);
+
   updateQuizStatsUI();
   updateProgressUI();
 
@@ -705,6 +1039,10 @@ function handleQuizAnswer(selectedValue) {
     : `Hampir tepat! Jawabannya ${letter.phonetic} (${letter.char}) dari ${cat.friendlyName}`;
   elQuizFeedbackBody.textContent = `${letter.howTo}`;
   elQuizFeedback.classList.remove('hidden');
+
+  btnQuizNext.textContent = roundComplete
+    ? 'Lihat Ringkasan Sesi'
+    : 'Lanjut ke Soal Berikutnya';
   btnQuizNext.classList.remove('hidden');
 }
 
@@ -723,6 +1061,9 @@ function switchTab(tabName) {
 
   if (tabName === 'quiz') {
     stopPracticeLoop();
+    stopCompareMorph();
+    closeOrganExplorer();
+    quizManager.resetRound();
     updateQuizStatsUI();
     loadNextQuizQuestion(true);
   } else if (prevTab === 'quiz') {
@@ -731,10 +1072,20 @@ function switchTab(tabName) {
 }
 
 // ============================================================================
-// 9. Wire Up Interactions, Welcome Strip, Theme, Search & Shortcuts
+// 11. Wire Up All Controls, Voice Practice, Curriculum & Shortcuts
 // ============================================================================
 tabButtons.forEach((btn) => {
   btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+btnCloseOe.addEventListener('click', closeOrganExplorer);
+
+// Tap 3D canvas to close open mobile bottom sheet or organ explorer smoothly
+container.addEventListener('pointerdown', () => {
+  if (document.body.classList.contains('mobile-sheet-open')) {
+    document.body.classList.remove('mobile-sheet-open');
+    btnMobileDrawer.setAttribute('aria-expanded', 'false');
+  }
 });
 
 btnDismissWelcome.addEventListener('click', () => {
@@ -746,6 +1097,36 @@ btnStartAlif.addEventListener('click', () => {
   elWelcomeStrip.classList.add('hidden');
   store.updatePref('welcomeDismissed', true);
   selectLetter(getLetterById('alif'), { playAudio: true });
+});
+
+btnMarkMastered.addEventListener('click', () => {
+  const nowMastered = store.toggleMastered(state.activeLetter.id);
+  updateProgressUI();
+  showToast(
+    nowMastered
+      ? `Huruf ${state.activeLetter.phonetic} (${state.activeLetter.char}) ditandai sudah dikuasai`
+      : `Tanda dikuasai pada ${state.activeLetter.phonetic} dibatalkan`
+  );
+});
+
+btnCompareMorph.addEventListener('click', toggleCompareMorph);
+btnRecord.addEventListener('click', handleRecordToggle);
+btnPlayMine.addEventListener('click', handlePlayMine);
+btnAbAudio.addEventListener('click', handleCompareAudioAB);
+
+btnOpenCurriculum.addEventListener('click', openCurriculumModal);
+btnCloseCurriculum.addEventListener('click', () => curriculumModal.classList.add('hidden'));
+btnCurrCloseBottom.addEventListener('click', () => curriculumModal.classList.add('hidden'));
+curriculumModal.addEventListener('click', (e) => {
+  if (e.target === curriculumModal) curriculumModal.classList.add('hidden');
+});
+btnCurrPracticeWeak.addEventListener('click', () => {
+  curriculumModal.classList.add('hidden');
+  quizScopeButtons.forEach((b) =>
+    b.classList.toggle('active', b.dataset.qscope === 'unmastered')
+  );
+  quizManager.setScope('unmastered');
+  switchTab('quiz');
 });
 
 btnTheme.addEventListener('click', () => {
@@ -762,6 +1143,14 @@ quizModeButtons.forEach((btn) => {
   });
 });
 
+quizScopeButtons.forEach((btn) => {
+  btn.addEventListener('click', () => {
+    quizScopeButtons.forEach((b) => b.classList.toggle('active', b === btn));
+    quizManager.setScope(btn.dataset.qscope);
+    loadNextQuizQuestion(true);
+  });
+});
+
 btnQuizReplay.addEventListener('click', () => {
   if (!quizManager.currentQuestion) return;
   controller.triggerPronunciation();
@@ -769,6 +1158,10 @@ btnQuizReplay.addEventListener('click', () => {
 });
 
 btnQuizNext.addEventListener('click', () => loadNextQuizQuestion(true));
+btnQuizNewRound.addEventListener('click', () => {
+  quizManager.resetRound();
+  loadNextQuizQuestion(true);
+});
 
 btnPlay.addEventListener('click', () => triggerPronounce());
 btnLoop.addEventListener('click', () => togglePracticeLoop());
@@ -872,6 +1265,7 @@ function setLabelsVisible(visible, persist = true) {
   chkLabels.checked = visible;
   anatomicalLabels.setVisible(visible);
   qbtnLabels.classList.toggle('active', visible);
+  if (!visible) closeOrganExplorer();
   if (persist) store.updatePref('showLabels', visible);
 }
 
@@ -965,9 +1359,21 @@ window.addEventListener('keydown', (e) => {
   } else if (e.key === 'g' || e.key === 'G') {
     if (gridModal.classList.contains('hidden')) openMakhrajGridModal();
     else gridModal.classList.add('hidden');
+  } else if (e.key === 'r' || e.key === 'R') {
+    if (state.activeTab === 'learn') handleRecordToggle();
+  } else if (e.key === 'f' || e.key === 'F') {
+    const preset = state.activeLetter?.cameraPreset || 'side';
+    setActiveCamPreset(preset);
+  } else if (e.key === 't' || e.key === 'T') {
+    const next = state.theme === 'light' ? 'dark' : 'light';
+    applyTheme(next, true);
   } else if (e.key === 'Escape') {
     stopPracticeLoop();
+    stopCompareMorph();
+    if (voiceRecorder.isRecording) voiceRecorder.stop();
+    closeOrganExplorer();
     gridModal.classList.add('hidden');
+    curriculumModal.classList.add('hidden');
     helpModal.classList.add('hidden');
     infoModal.classList.add('hidden');
     document.body.classList.remove('focus-3d');
@@ -976,7 +1382,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 // ============================================================================
-// 10. Restore Saved Preferences, Boot & Render Loop
+// 12. Restore Saved Preferences, Boot & Render Loop
 // ============================================================================
 function restoreSavedPreferences() {
   applyTheme(state.theme, false);
@@ -1025,6 +1431,11 @@ function animate() {
 
   const audioLevel = audioManager.getAudioLevel();
   const pose = controller.update(dt);
+
+  if (voiceRecorder.isRecording) {
+    const micLvl = voiceRecorder.getInputLevel();
+    elMicMeterFill.style.width = `${Math.max(8, Math.round(micLvl * 100))}%`;
+  }
 
   tongue.updatePose(pose, elapsed, audioLevel);
   vocalTract.updatePose(pose, state.activeLetter, elapsed, audioLevel);

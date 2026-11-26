@@ -6,17 +6,19 @@
     <title>Makhraj 3D — Belajar Pelafalan 29 Huruf Hijaiyah</title>
     <meta
       name="description"
-      content="Aplikasi 3D interaktif ramah pemula untuk belajar pelafalan 29 huruf Hijaiyah (Makharijul Huruf) lengkap dengan gerakan lidah, gigi, bibir, tenggorokan, audio, dan kuis latihan."
+      content="Aplikasi 3D interaktif ramah pemula untuk belajar pelafalan 29 huruf Hijaiyah (Makharijul Huruf) lengkap dengan gerakan lidah 1:1, latihan suara mikrofon, contoh kata Al-Qur'an, dan kuis adaptif."
     />
-    <meta name="theme-color" id="meta-theme-color" content="#efefe9" />
+    <meta name="theme-color" id="meta-theme-color" content="#e8e8e2" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Makhraj 3D — Belajar Pelafalan 29 Huruf Hijaiyah" />
     <meta
       property="og:description"
-      content="Lihat gerakan 3D lidah, gigi, bibir, tenggorokan, dan rongga hidung untuk 29 huruf Hijaiyah secara jernih dan mudah dipahami."
+      content="Lihat gerakan 3D lidah, gigi, bibir, tenggorokan, dan rongga hidung untuk 29 huruf Hijaiyah, rekam suaramu, dan latih bacaan dengan contoh Al-Qur'an."
     />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="apple-touch-icon" href="./favicon.svg" />
+    <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -52,8 +54,26 @@
     <!-- Full-Viewport Three.js 3D Stage -->
     <div id="canvas-container" aria-label="Visualisasi 3D Makharijul Huruf"></div>
 
-    <!-- 3D-Projected Friendly Callout Labels Overlay -->
-    <div id="labels-layer" class="labels-layer" aria-hidden="true"></div>
+    <!-- 3D-Projected Clickable Friendly Organ Pins Overlay -->
+    <div id="labels-layer" class="labels-layer"></div>
+
+    <!-- Floating Organ Explorer Card (opens when clicking any 3D organ pin) -->
+    <div id="organ-explorer" class="organ-explorer hidden" role="region" aria-label="Detail Organ Aktif">
+      <div class="oe-head">
+        <div>
+          <strong id="oe-title">Gigi Seri Atas</strong>
+          <small id="oe-sub">Gigi Depan Atas</small>
+        </div>
+        <button id="btn-close-oe" class="welcome-close" aria-label="Tutup detail organ">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <p id="oe-role" class="oe-role"></p>
+      <div id="oe-letters" class="oe-letters"></div>
+    </div>
 
     <!-- Monochrome Toast Notification -->
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -67,7 +87,7 @@
           <p class="brand-sub">Belajar Pelafalan 29 Huruf Hijaiyah</p>
         </div>
         <div class="brand-actions">
-          <button id="btn-theme" class="icon-btn icon-btn-text" title="Ubah tema Terang atau Gelap" aria-label="Ubah tema Terang atau Gelap">
+          <button id="btn-theme" class="icon-btn icon-btn-text" title="Ubah tema Terang atau Gelap (Pintasan: T)" aria-label="Ubah tema Terang atau Gelap">
             <svg id="icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
             </svg>
@@ -123,7 +143,7 @@
     <!-- Desktop Bottom-Left Friendly Quick Controls -->
     <div class="studio-quickbar" aria-label="Kontrol Cepat 3D">
       <div class="quick-pills">
-        <button id="qbtn-focus" class="quick-pill" title="Arahkan kamera ke sudut terbaik untuk huruf ini">
+        <button id="qbtn-focus" class="quick-pill" title="Arahkan kamera ke sudut terbaik untuk huruf ini (Pintasan: F)">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="3"/>
             <path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
@@ -134,10 +154,10 @@
         <button id="qbtn-airflow" class="quick-pill active" title="Tampilkan atau sembunyikan arah hembusan udara">Aliran Udara</button>
         <button id="qbtn-labels" class="quick-pill active" title="Tampilkan atau sembunyikan nama bagian organ">Nama Organ</button>
       </div>
-      <div class="quick-hint">Seret: Putar 3D &nbsp;·&nbsp; Gulir: Perbesar &nbsp;·&nbsp; Spasi: Dengarkan &nbsp;·&nbsp; G: Peta 29 Huruf</div>
+      <div class="quick-hint">Seret: Putar 3D &nbsp;·&nbsp; Klik Pin Organ: Jelajahi &nbsp;·&nbsp; Spasi: Dengarkan &nbsp;·&nbsp; G: Peta 29</div>
     </div>
 
-    <!-- Mobile Quick Action Bar (visible only on small screens above bottom dock) -->
+    <!-- Mobile Quick Action Bar -->
     <div class="mobile-quickbar" id="mobile-quickbar">
       <div class="mobile-letter-summary">
         <span class="mobile-char" id="mobile-char">ت</span>
@@ -185,7 +205,7 @@
         <!-- Gentle First-Time Welcome Strip (dismissible) -->
         <section class="welcome-strip" id="welcome-strip">
           <div class="welcome-copy">
-            <strong>Selamat datang!</strong> Pilih huruf di bawah, klik <strong>Dengarkan</strong>, lalu seret model 3D untuk mengamati posisi lidah.
+            <strong>Selamat datang!</strong> Pilih huruf di bawah, klik <strong>Dengarkan</strong>, lalu rekam suaramu atau klik pin organ 3D untuk eksplorasi.
           </div>
           <div class="welcome-actions">
             <button id="btn-start-alif" class="welcome-link">Mulai dari ا</button>
@@ -223,6 +243,12 @@
             </div>
             <div class="hero-badge-row">
               <span class="makhraj-badge" id="active-makhraj-badge">Lidah · Al-Lisan</span>
+              <button id="btn-mark-mastered" class="mastery-pill" title="Tandai huruf ini sudah dikuasai">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <span id="mastery-pill-label">Tandai Paham</span>
+              </button>
             </div>
             <div class="sifat-chips" id="active-sifat"></div>
             <p class="sifat-hint" id="sifat-hint">Ketuk label sifat di atas untuk melihat artinya</p>
@@ -243,6 +269,7 @@
           </div>
         </section>
 
+        <!-- Listen, Repeat Loop & Slow-Mo Row -->
         <section class="action-row">
           <button id="btn-play" class="btn-primary">
             <svg class="play-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -267,6 +294,37 @@
           </button>
         </section>
 
+        <!-- Privacy-First On-Device Voice Practice Recorder -->
+        <section class="voice-box" aria-label="Latihan Rekam Suara">
+          <div class="voice-row">
+            <button id="btn-record" class="voice-btn" title="Rekam suaramu langsung di perangkat (Pintasan: R)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+              <span id="btn-record-label">Rekam Suaramu</span>
+            </button>
+            <button id="btn-play-mine" class="voice-btn hidden" title="Putar rekaman suaramu">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              <span>Suaraku</span>
+            </button>
+            <button id="btn-ab-audio" class="voice-btn hidden" title="Dengarkan contoh lalu langsung suaramu untuk membandingkan">
+              <span>Bandingkan</span>
+            </button>
+          </div>
+          <div id="mic-meter-wrap" class="mic-meter-wrap hidden">
+            <div class="mic-meter-track">
+              <div id="mic-meter-fill" class="mic-meter-fill"></div>
+            </div>
+            <span class="mic-meter-caption">Merekam... ucapkan huruf dengan jelas</span>
+          </div>
+        </section>
+
+        <!-- Pronunciation Guide -->
         <section class="guide-box">
           <h3>Cara Mengucapkan</h3>
           <p id="active-howto"></p>
@@ -276,18 +334,44 @@
           </div>
         </section>
 
+        <!-- Tahsin Harakat Drills & Real Quranic Word Example -->
+        <section class="tahsin-box">
+          <div class="section-head">
+            <h3>Latihan Harakat &amp; Contoh Al-Qur'an</h3>
+            <span class="compare-caption">Metode Tahsin</span>
+          </div>
+          <div class="drill-chips" id="drill-chips" dir="rtl"></div>
+          <div class="quran-example">
+            <div class="quran-word" id="quran-arabic" dir="rtl">التِّينِ</div>
+            <div class="quran-meta">
+              <strong id="quran-latin">At-Tīni</strong>
+              <small id="quran-surah">At-Tin: 1</small>
+            </div>
+          </div>
+        </section>
+
+        <!-- Compare Similar Letters + Live 3D A/B Morph Toggle -->
         <section class="compare-box">
           <div class="section-head">
             <h3>Bandingkan Huruf Serupa</h3>
-            <span class="compare-caption" id="compare-caption">Pilih untuk membandingkan</span>
+            <button id="btn-compare-morph" class="morph-toggle-btn hidden" title="Putar animasi 3D bolak-balik antar huruf serupa">
+              Animasi A ↔ B
+            </button>
           </div>
+          <p class="compare-diff hidden" id="compare-diff"></p>
           <div class="compare-pairs" id="compare-pairs"></div>
         </section>
 
+        <!-- Clickable Progress & 5-Makhraj Curriculum Card -->
         <section class="progress-box">
           <div class="progress-row">
             <span id="progress-encouragement">Progres Belajar</span>
-            <strong id="progress-label">0 / 29 huruf</strong>
+            <button id="btn-open-curriculum" class="progress-detail-btn" title="Lihat rincian penguasaan per 5 Makhraj">
+              <strong id="progress-label">0 / 29 dikuasai</strong>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
           </div>
           <div class="progress-track">
             <div id="progress-fill" class="progress-fill"></div>
@@ -408,14 +492,20 @@
             <button data-qmode="letter" class="active">Tebak Huruf 3D</button>
             <button data-qmode="makhraj">Tebak Tempat Keluar</button>
           </div>
+          <div class="quiz-scope-row" id="quiz-scope-buttons" aria-label="Cakupan Latihan Kuis">
+            <button data-qscope="all" class="active">Semua 29</button>
+            <button data-qscope="confusing">Huruf Mirip</button>
+            <button data-qscope="unmastered">Belum Paham</button>
+          </div>
           <div class="quiz-stats">
+            <div><span class="stat-label">Sesi</span><strong id="q-stat-round">1 / 10</strong></div>
             <div><span class="stat-label">Benar</span><strong id="q-stat-correct">0</strong></div>
-            <div><span class="stat-label">Dijawab</span><strong id="q-stat-total">0</strong></div>
             <div><span class="stat-label">Beruntun</span><strong id="q-stat-streak">0</strong></div>
           </div>
         </section>
 
-        <section class="quiz-card">
+        <!-- Active Quiz Question Card -->
+        <section class="quiz-card" id="quiz-question-card">
           <div class="quiz-prompt-row">
             <div class="quiz-mystery-glyph" id="quiz-mystery-glyph">?</div>
             <p id="quiz-prompt" class="quiz-prompt">Amati posisi lidah, aliran udara, dan dengarkan suaranya.</p>
@@ -437,6 +527,20 @@
           </div>
 
           <button id="btn-quiz-next" class="btn-primary hidden">Lanjut ke Soal Berikutnya</button>
+        </section>
+
+        <!-- 10-Question Round Summary Card -->
+        <section class="quiz-card hidden" id="quiz-summary-card">
+          <div class="summary-score-wrap">
+            <span class="stat-label">Ringkasan Sesi Latihan</span>
+            <strong id="summary-score" class="summary-score">8 / 10</strong>
+            <p id="summary-caption" class="summary-caption">Akurasi 80% — Bagus sekali, terus pertahankan!</p>
+          </div>
+          <div id="summary-missed-wrap" class="summary-missed-wrap hidden">
+            <span class="stat-label">Perlu diulang di 3D (klik untuk pelajari):</span>
+            <div id="summary-missed-list" class="summary-missed-list"></div>
+          </div>
+          <button id="btn-quiz-new-round" class="btn-primary">Mulai Sesi Baru (10 Soal)</button>
         </section>
       </div>
     </aside>
@@ -473,7 +577,7 @@
         <div class="modal-header">
           <div>
             <h2 id="grid-modal-title">Pilih dari 29 Huruf Hijaiyah</h2>
-            <p class="modal-subtitle">Dikelompokkan berdasarkan 5 tempat keluarnya huruf agar mudah dipelajari.</p>
+            <p class="modal-subtitle">Dikelompokkan berdasarkan 5 tempat keluarnya huruf. Titik penuh menandakan sudah dikuasai.</p>
           </div>
           <button id="btn-close-grid" class="icon-btn" aria-label="Tutup Peta Huruf">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -489,8 +593,34 @@
           </svg>
           <input id="grid-search-input" type="search" placeholder="Cari huruf... (misal: Dhad, Qaf, Sin, Ain, ض)" autocomplete="off" />
         </div>
-        <div class="makhraj-grid-body" id="makhraj-grid-body">
-          <!-- Populated dynamically by main.js -->
+        <div class="makhraj-grid-body" id="makhraj-grid-body"></div>
+      </div>
+    </div>
+
+    <!-- 5-Makhraj Curriculum & Mastery Progress Modal -->
+    <div class="modal-backdrop hidden" id="curriculum-modal" role="dialog" aria-modal="true" aria-labelledby="curr-modal-title">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <h2 id="curr-modal-title">Progres &amp; Kurikulum 5 Makhraj</h2>
+            <p class="modal-subtitle" id="curr-subtitle">Pantau penguasaanmu untuk setiap kelompok huruf Hijaiyah.</p>
+          </div>
+          <button id="btn-close-curriculum" class="icon-btn" aria-label="Tutup Kurikulum">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="curr-kpis">
+          <div><span class="stat-label">Dikuasai</span><strong id="curr-mastered">0 / 29</strong></div>
+          <div><span class="stat-label">Pernah Dilatih</span><strong id="curr-learned">0 / 29</strong></div>
+          <div><span class="stat-label">Akurasi Kuis</span><strong id="curr-accuracy">0%</strong></div>
+        </div>
+        <div id="curr-makhraj-list" class="curr-makhraj-list"></div>
+        <div class="modal-footer-actions">
+          <button id="btn-curr-practice-weak" class="btn-primary-sm">Latih Huruf Belum Paham</button>
+          <button id="btn-curr-close-bottom" class="btn-ghost">Tutup</button>
         </div>
       </div>
     </div>
@@ -501,7 +631,7 @@
         <div class="modal-header">
           <div>
             <h2 id="help-modal-title">Cara Mudah Belajar di Makhraj 3D</h2>
-            <p class="modal-subtitle">Tiga langkah sederhana untuk mulai berlatih pelafalan.</p>
+            <p class="modal-subtitle">Tiga langkah praktis untuk melatih pelafalan Hijaiyah sehari-hari.</p>
           </div>
           <button id="btn-close-help" class="icon-btn" aria-label="Tutup Bantuan">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -514,27 +644,27 @@
           <div class="help-step">
             <span class="help-num">1</span>
             <div>
-              <strong>Pilih Huruf yang Ingin Dipelajari</strong>
-              <p>Ketuk huruf di bar bawah, gunakan filter di kiri atas (Lidah, Tenggorokan, Bibir, dll.), atau klik tombol <strong>Peta 29</strong> untuk mencari cepat.</p>
+              <strong>Pilih Huruf atau Klik Langsung Organ 3D</strong>
+              <p>Ketuk huruf di bar bawah, buka <strong>Peta 29</strong> untuk mencari cepat, atau klik langsung pin nama organ di model 3D untuk melihat huruf-huruf yang keluar dari sana.</p>
             </div>
           </div>
           <div class="help-step">
             <span class="help-num">2</span>
             <div>
-              <strong>Amati Posisi Lidah &amp; Organ 3D</strong>
-              <p>Seret layar untuk memutar model 360°, gulir untuk memperbesar, atau klik <strong>Fokus Titik</strong> agar kamera mengarah tepat ke titik sentuh huruf.</p>
+              <strong>Amati Posisi Lidah &amp; Bandingkan Huruf Mirip</strong>
+              <p>Seret layar untuk putar 360°, klik <strong>Fokus Titik</strong> agar kamera menyorot pas, atau aktifkan <strong>Animasi A ↔ B</strong> pada huruf serupa (misal ت vs ط) agar perbedaan lidahnya terlihat langsung.</p>
             </div>
           </div>
           <div class="help-step">
             <span class="help-num">3</span>
             <div>
-              <strong>Dengarkan, Tirukan, lalu Uji di Kuis</strong>
-              <p>Tekan <strong>Dengarkan</strong> (atau Spasi). Aktifkan <strong>Ulang</strong> dan <strong>0.5x</strong> untuk latihan perlahan, lalu buka tab <strong>Latihan Kuis</strong> untuk menguji ingatanmu.</p>
+              <strong>Dengarkan, Rekam Suaramu &amp; Uji di Kuis</strong>
+              <p>Klik <strong>Dengarkan</strong>, latihan harakat <strong>Fathah–Kasrah–Dhammah–Sukun</strong>, tekan <strong>Rekam Suaramu</strong> untuk membandingkan pelafalanmu, lalu ikuti sesi 10 soal di <strong>Latihan Kuis</strong>.</p>
             </div>
           </div>
         </div>
         <div class="modal-footer-actions">
-          <span class="shortcut-summary">Pintasan: <code>Spasi</code> Dengarkan · <code>← / →</code> Ganti Huruf · <code>G</code> Peta 29</span>
+          <span class="shortcut-summary"><code>Spasi</code> Dengarkan · <code>R</code> Rekam · <code>F</code> Fokus · <code>G</code> Peta 29 · <code>T</code> Tema</span>
           <button id="btn-help-done" class="btn-primary-sm">Mulai Belajar</button>
         </div>
       </div>
@@ -561,7 +691,7 @@
           <ul>
             <li><strong>Anatomi Organ Bicara 1:1 (BodyParts3D / OrganUI, CC BY-SA 2.1):</strong> 28 gigi, gusi, tulang palatum, mandibula berengsel TMJ, rongga hidung <em>Al-Khaisyum</em> &amp; konka, otot konstriktor faring &amp; <em>musculus uvulae</em>, serta hyoid, epiglotis, pita suara &amp; trakea (<code>anatomy_head_1to1.glb</code>).</li>
             <li><strong>Siluet Kepala &amp; Bibir Interaktif:</strong> <code>facecap.glb</code> (Three.js / CC0, 52 ARKit blendshapes) dengan custom GLSL shader X-Ray + irisan samping, real-time <em>Subsurface Scattering (SSS)</em>, penanda titik makhraj, dan partikel aliran udara.</li>
-            <li><strong>Audio Pelafalan:</strong> 29 rekaman huruf Arab dari repositori open-source <code>adnan/Arabic-Alphabet</code> melalui Web Audio API + <code>AnalyserNode</code>.</li>
+            <li><strong>Audio &amp; Privasi Offline:</strong> 29 rekaman huruf Arab dari repositori open-source <code>adnan/Arabic-Alphabet</code>; fitur rekam suara berjalan 100% di perangkat Anda tanpa pernah dikirim ke server.</li>
           </ul>
           <div class="modal-footer-actions">
             <button id="btn-reset-progress" class="btn-ghost">Reset Progres Belajar</button>

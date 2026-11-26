@@ -1,11 +1,13 @@
 /**
- * ProgressStore — Safe localStorage persistence for learned letters, quiz stats, and view preferences.
+ * ProgressStore — Safe localStorage persistence for learned & mastered letters,
+ * quiz accuracy/streaks, and persistent user preferences.
  */
 
 const STORAGE_KEY = 'makhraj3d_user_state_v1';
 
 const DEFAULT_DATA = {
   learnedIds: [],
+  masteredIds: [],
   quiz: {
     correct: 0,
     total: 0,
@@ -34,6 +36,7 @@ export class ProgressStore {
   constructor() {
     this.data = this._load();
     this.learnedSet = new Set(this.data.learnedIds || []);
+    this.masteredSet = new Set(this.data.masteredIds || []);
   }
 
   _load() {
@@ -43,6 +46,7 @@ export class ProgressStore {
       const parsed = JSON.parse(raw);
       return {
         learnedIds: Array.isArray(parsed.learnedIds) ? parsed.learnedIds : [],
+        masteredIds: Array.isArray(parsed.masteredIds) ? parsed.masteredIds : [],
         quiz: { ...DEFAULT_DATA.quiz, ...(parsed.quiz || {}) },
         prefs: { ...DEFAULT_DATA.prefs, ...(parsed.prefs || {}) },
       };
@@ -54,6 +58,7 @@ export class ProgressStore {
   _save() {
     try {
       this.data.learnedIds = Array.from(this.learnedSet);
+      this.data.masteredIds = Array.from(this.masteredSet);
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
     } catch {
       // Ignore storage quota or private-mode restrictions
@@ -68,11 +73,42 @@ export class ProgressStore {
   }
 
   isLearned(letterId) {
-    return this.learnedSet.has(letterId);
+    return this.learnedSet.has(letterId) || this.masteredSet.has(letterId);
   }
 
   getLearnedCount() {
-    return this.learnedSet.size;
+    const union = new Set([...this.learnedSet, ...this.masteredSet]);
+    return union.size;
+  }
+
+  markMastered(letterId) {
+    if (!letterId) return false;
+    this.learnedSet.add(letterId);
+    if (this.masteredSet.has(letterId)) return false;
+    this.masteredSet.add(letterId);
+    this._save();
+    return true;
+  }
+
+  toggleMastered(letterId) {
+    if (!letterId) return false;
+    if (this.masteredSet.has(letterId)) {
+      this.masteredSet.delete(letterId);
+      this._save();
+      return false;
+    }
+    this.learnedSet.add(letterId);
+    this.masteredSet.add(letterId);
+    this._save();
+    return true;
+  }
+
+  isMastered(letterId) {
+    return this.masteredSet.has(letterId);
+  }
+
+  getMasteredCount() {
+    return this.masteredSet.size;
   }
 
   recordQuizResult(isCorrect) {
@@ -105,6 +141,7 @@ export class ProgressStore {
 
   resetProgress() {
     this.learnedSet.clear();
+    this.masteredSet.clear();
     this.data.quiz = { ...DEFAULT_DATA.quiz };
     this._save();
   }
