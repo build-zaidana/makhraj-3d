@@ -70,7 +70,10 @@ loadingManager.onProgress = (_url, loaded, total) => {
   loadingBar.style.width = `${Math.max(12, pct)}%`;
   loadingStatus.textContent = `Memuat — ${pct}%`;
 };
-loadingManager.onLoad = () => finishLoading();
+loadingManager.onLoad = () => {
+  finishLoading();
+  sceneManager.requestShadowUpdate(true);
+};
 loadingManager.onError = () => finishLoading();
 setTimeout(() => finishLoading(), 6500);
 
@@ -753,6 +756,7 @@ function updateCutawayUI(xVal, persist = true) {
   const enableInternalCut =
     (state.viewMode === 'xray-cut' || state.viewMode === 'solid-cut') && xVal < 0.75;
   vocalTract.setCutaway(enableInternalCut, xVal);
+  sceneManager.requestShadowUpdate(true);
 
   const isSagittal = xVal <= 0.14;
   if (isSagittal) valCutaway.textContent = 'Terbuka (Tengah)';
@@ -1290,14 +1294,17 @@ sliderOpacity.addEventListener('input', (e) => {
 
 chkLayerLips.addEventListener('change', (e) => {
   lips.setVisible(e.target.checked);
+  sceneManager.requestShadowUpdate(true);
   store.updatePref('layerLips', e.target.checked);
 });
 chkLayerJaw.addEventListener('change', (e) => {
   vocalTract.setLayerVisible('jaw', e.target.checked);
+  sceneManager.requestShadowUpdate(true);
   store.updatePref('layerJaw', e.target.checked);
 });
 chkLayerPharynx.addEventListener('change', (e) => {
   vocalTract.setLayerVisible('pharynx', e.target.checked);
+  sceneManager.requestShadowUpdate(true);
   store.updatePref('layerPharynx', e.target.checked);
 });
 chkLayerNasal.addEventListener('change', (e) => {
@@ -1306,6 +1313,7 @@ chkLayerNasal.addEventListener('change', (e) => {
 });
 chkLayerTongue.addEventListener('change', (e) => {
   tongue.setVisible(e.target.checked);
+  sceneManager.requestShadowUpdate(true);
   store.updatePref('layerTongue', e.target.checked);
 });
 
@@ -1435,6 +1443,7 @@ const clock = new THREE.Clock();
 
 function animate() {
   requestAnimationFrame(animate);
+  if (document.hidden) return;
   const dt = Math.min(clock.getDelta(), 0.05);
   const elapsed = clock.getElapsedTime();
 
@@ -1447,9 +1456,13 @@ function animate() {
     elMicMeterFill.style.width = `${Math.max(8, Math.round(micLvl * 100))}%`;
   }
 
-  tongue.updatePose(pose, elapsed, audioLevel);
-  lips.updatePose(pose, elapsed, audioLevel);
-  vocalTract.updatePose(pose, state.activeLetter, elapsed, audioLevel, releaseFactor);
+  const tongueMoved = tongue.updatePose(pose, elapsed, audioLevel);
+  const lipsMoved = lips.updatePose(pose, elapsed, audioLevel);
+  const tractMoved = vocalTract.updatePose(pose, state.activeLetter, elapsed, audioLevel, releaseFactor);
+  if (tongueMoved || lipsMoved || tractMoved) {
+    sceneManager.requestShadowUpdate();
+  }
+
   outerHead.applyPose(pose, audioLevel);
   outerHead.update(elapsed);
   highlighter.update(dt, elapsed, sceneManager.camera, audioLevel);

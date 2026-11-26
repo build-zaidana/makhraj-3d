@@ -16,8 +16,8 @@ import { applySubsurfaceScattering, applySolidCutInterior } from './TextureGener
  *      و (lipRound): unified, seamless, rounded protruding "O" lip purse!
  */
 
-const SEG_LOOP = 64;    // Around mouth perimeter (0..2pi)
-const SEG_RING = 22;    // Sculpted anatomical lip cross-section
+const SEG_LOOP = 44;    // Smooth perimeter loop (optimized for 60 FPS)
+const SEG_RING = 14;    // Sculpted anatomical lip cross-section
 
 export class LipsMesh {
   constructor(parentGroup, sagittalClipPlane) {
@@ -54,6 +54,7 @@ export class LipsMesh {
       c.renderOrder = 4;
       this.group.add(c);
     });
+    this._lastSig = null;
 
     this.updatePose(
       { jawOpen: 0.22, lipClose: 0, lipRound: 0, lipLabiodental: 0 },
@@ -254,12 +255,20 @@ export class LipsMesh {
     capMesh.visible = true;
   }
 
-  updatePose(pose, time = 0, audioLevel = 0) {
+  updatePose(pose, _time = 0, audioLevel = 0) {
     const jawOpen = THREE.MathUtils.clamp((pose.jawOpen || 0.22) + audioLevel * 0.08, 0, 1);
     const lipClose = THREE.MathUtils.clamp(pose.lipClose || 0, 0, 1);
     const lipRound = THREE.MathUtils.clamp(pose.lipRound || 0, 0, 1);
     const lipLabio = THREE.MathUtils.clamp(pose.lipLabiodental || 0, 0, 1);
-    const breath = Math.sin(time * 2.0) * 0.002;
+    const clipX = this.sagittalClipPlane ? this.sagittalClipPlane.constant : 5.0;
+
+    // Dirty-check: zero vertex rebuilds or normal recalculations when lips & clip plane are static!
+    const q = (v) => Math.round(v * 1500);
+    const sig = `${q(jawOpen)}|${q(lipClose)}|${q(lipRound)}|${q(lipLabio)}|${q(clipX)}`;
+    if (sig === this._lastSig) return false;
+    this._lastSig = sig;
+
+    const breath = 0;
 
     const halfWidth = 0.34 * (1.0 - lipRound * 0.40);
     const jawAngle = jawOpen * 0.25 * (1.0 - lipClose * 0.85);
@@ -297,7 +306,6 @@ export class LipsMesh {
     this.geometry.computeVertexNormals();
 
     // Render watertight procedural solid cut caps right where sagittalClipPlane slices upper & lower lip!
-    const clipX = this.sagittalClipPlane ? this.sagittalClipPlane.constant : 5.0;
     if (Math.abs(clipX) < halfWidth * 0.94) {
       const ratio = THREE.MathUtils.clamp(clipX / halfWidth, -0.99, 0.99);
       const phiUpper = Math.acos(ratio);                 // Upper lip intersection in (0, pi)
@@ -308,5 +316,6 @@ export class LipsMesh {
       this.upperCap.visible = false;
       this.lowerCap.visible = false;
     }
+    return true;
   }
 }

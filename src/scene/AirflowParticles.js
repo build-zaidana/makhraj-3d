@@ -17,7 +17,7 @@ import {
  *  - Dhad (ض): bilateral Istithalah pressure stream curving outward along inner upper molars (±X)!
  */
 
-const PARTICLE_COUNT = 320;
+const PARTICLE_COUNT = 220;
 
 // Exact stop parameter t along oralCurve for Syiddah / blocked-oral letters
 const OBSTRUCTION_T = {

@@ -13,10 +13,10 @@ import { applySubsurfaceScattering, createTongueTextures } from './TextureGenera
  *   - Real-time Fast Subsurface Scattering (SSS), wet clearcoat & circumvallate papillae textures
  */
 
-const SEGMENTS_U = 56;
-const SEGMENTS_V = 64;
-const FLOOR_U = 18;
-const FLOOR_V = 14;
+const SEGMENTS_U = 36;
+const SEGMENTS_V = 44;
+const FLOOR_U = 12;
+const FLOOR_V = 10;
 
 export class TongueMesh {
   constructor(parentGroup, sagittalClipPlane = null) {
@@ -41,7 +41,7 @@ export class TongueMesh {
         sheen: 0.42,
         sheenRoughness: 0.48,
         sheenColor: new THREE.Color('#ffd6df'),
-        side: THREE.DoubleSide,
+        side: THREE.FrontSide,
       }),
       { color: '#c8243e', intensity: 0.52, power: 2.2, wrap: 0.5 }
     );
@@ -83,6 +83,7 @@ export class TongueMesh {
     this._tan = new THREE.Vector3();
     this._up = new THREE.Vector3();
     this._right = new THREE.Vector3(1, 0, 0);
+    this._lastSig = null;
 
     this.updatePose(
       {
@@ -165,9 +166,18 @@ export class TongueMesh {
   }
 
   updatePose(pose, time = 0, audioLevel = 0) {
-    const breath = Math.sin(time * 2.0) * 0.004;
+    // Cheap transform-level micro-breathing (zero vertex rebuild cost when idle!)
+    this.group.position.y = Math.sin(time * 1.8) * 0.0025;
+
     const trill =
       pose.curl > 0.5 ? Math.sin(time * 28.0) * 0.012 * (0.35 + audioLevel * 1.2) : 0;
+
+    // Dirty-check: skip 3,200-tri vertex loft + computeVertexNormals() whenever pose is unchanged!
+    const q = (v) => Math.round((v || 0) * 1500);
+    const sig = `${q(pose.tipY)}|${q(pose.tipZ)}|${q(pose.bladeY)}|${q(pose.midY)}|${q(pose.backY)}|${q(pose.backZ)}|${q(pose.sideLift)}|${q(pose.curl)}|${q(pose.groove)}|${q(pose.jawOpen)}|${q(pose.throatPinch)}|${pose.throatZone}|${q(trill)}|${q(audioLevel)}`;
+    if (sig === this._lastSig) return false;
+    this._lastSig = sig;
+
     const jawDrop = (pose.jawOpen - 0.22) * 0.13;
     const backZ = pose.backZ || 0;
     const throatRetract = pose.throatZone === 1 ? (pose.throatPinch || 0) : 0;
@@ -181,12 +191,12 @@ export class TongueMesh {
     );
     this._ctrlPts[2].set(
       0,
-      0.02 + pose.backY * 0.76 + breath,
+      0.02 + pose.backY * 0.76,
       -0.02 + backZ * 0.85
     );
     this._ctrlPts[3].set(
       0,
-      0.04 + pose.midY * 0.78 - jawDrop * 0.26 + breath,
+      0.04 + pose.midY * 0.78 - jawDrop * 0.26,
       0.18 + backZ * 0.20
     );
     this._ctrlPts[4].set(
@@ -276,6 +286,7 @@ export class TongueMesh {
     this.geometry.computeVertexNormals();
 
     this._updateFloorOfMouth(pose, audioLevel);
+    return true;
   }
 
   /**

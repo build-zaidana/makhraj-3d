@@ -129,11 +129,11 @@ export function applySolidCutInterior(material, {
         uniform float uCutInteriorDark;`
       )
       .replace(
-        '#include <dithering_fragment>',
+        '#include <tonemapping_fragment>',
         `if (!gl_FrontFacing) {
           gl_FragColor.rgb = mix(gl_FragColor.rgb * uCutInteriorDark, uCutInteriorCol, uCutInteriorMix);
         }
-        #include <dithering_fragment>`
+        #include <tonemapping_fragment>`
       );
   };
   material.customProgramCacheKey = () => `${prevKey}_cut_${tint}_${mixFactor}_${darken}`;

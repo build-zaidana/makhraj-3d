@@ -139,7 +139,7 @@ export class AnatomicalLabels {
         if (this.onSelectOrgan) this.onSelectOrgan(lm);
       });
       this.layerEl.appendChild(el);
-      return { ...lm, el, active: false };
+      return { ...lm, el, active: false, _lx: -9999, _ly: -9999, _lVis: null };
     });
   }
 
@@ -169,8 +169,11 @@ export class AnatomicalLabels {
 
     for (const item of this.items) {
       if (item.onlyWhenActive && !item.active) {
-        item.el.style.opacity = '0';
-        item.el.style.pointerEvents = 'none';
+        if (item._lVis !== false) {
+          item.el.style.opacity = '0';
+          item.el.style.pointerEvents = 'none';
+          item._lVis = false;
+        }
         continue;
       }
 
@@ -178,8 +181,11 @@ export class AnatomicalLabels {
       this._ndc.copy(this._worldPos).project(camera);
 
       if (this._ndc.z > 1.0) {
-        item.el.style.opacity = '0';
-        item.el.style.pointerEvents = 'none';
+        if (item._lVis !== false) {
+          item.el.style.opacity = '0';
+          item.el.style.pointerEvents = 'none';
+          item._lVis = false;
+        }
         continue;
       }
 
@@ -188,18 +194,28 @@ export class AnatomicalLabels {
 
       const outOfBounds = sx < 16 || sx > width - rightPad || sy < 72 || sy > height - 96;
       if (outOfBounds && !item.active) {
-        item.el.style.opacity = '0';
-        item.el.style.pointerEvents = 'none';
+        if (item._lVis !== false) {
+          item.el.style.opacity = '0';
+          item.el.style.pointerEvents = 'none';
+          item._lVis = false;
+        }
         continue;
       }
 
-      item.el.style.opacity = '1';
-      item.el.style.pointerEvents = 'auto';
+      if (item._lVis !== true) {
+        item.el.style.opacity = '1';
+        item.el.style.pointerEvents = 'auto';
+        item._lVis = true;
+      }
       const ox = item.active ? item.offset.x : 0;
       const oy = item.active ? item.offset.y : 0;
       const clampedX = Math.max(12, Math.min(width - rightPad, sx + ox));
       const clampedY = Math.max(66, Math.min(height - 96, sy + oy));
-      item.el.style.transform = `translate3d(${clampedX.toFixed(1)}px, ${clampedY.toFixed(1)}px, 0)`;
+      if (Math.abs(clampedX - item._lx) >= 0.45 || Math.abs(clampedY - item._ly) >= 0.45) {
+        item._lx = clampedX;
+        item._ly = clampedY;
+        item.el.style.transform = `translate3d(${clampedX.toFixed(1)}px, ${clampedY.toFixed(1)}px, 0)`;
+      }
     }
   }
 }

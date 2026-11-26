@@ -69,9 +69,12 @@ export class SceneManager {
       powerPreference: 'high-performance',
     });
     this.renderer.setSize(width, height);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.isMobile ? 1.5 : 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.isMobile ? 1.25 : 1.5));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.autoUpdate = false;
+    this.renderer.shadowMap.needsUpdate = true;
+    this._shadowCooldown = 0;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.08;
     this.renderer.localClippingEnabled = true;
@@ -118,14 +121,14 @@ export class SceneManager {
   }
 
   _setupPostProcessing(width, height) {
-    const pixelRatio = Math.min(window.devicePixelRatio, 2);
+    const pixelRatio = Math.min(window.devicePixelRatio, this.isMobile ? 1.25 : 1.5);
     const renderTarget = new THREE.WebGLRenderTarget(
       Math.floor(width * pixelRatio),
       Math.floor(height * pixelRatio),
       {
         type: THREE.HalfFloatType,
         stencilBuffer: true,
-        samples: 4, // Hardware MSAA inside EffectComposer for razor-sharp edges!
+        samples: 2, // Balanced 2x MSAA for fast 60 FPS dark-mode selective bloom
       }
     );
 
@@ -156,7 +159,7 @@ export class SceneManager {
     this.keyLight = new THREE.DirectionalLight('#ffffff', 1.38);
     this.keyLight.position.set(4.2, 5.4, 3.8);
     this.keyLight.castShadow = true;
-    const shadowSize = this.isMobile ? 1024 : 2048;
+    const shadowSize = this.isMobile ? 512 : 1024;
     this.keyLight.shadow.mapSize.width = shadowSize;
     this.keyLight.shadow.mapSize.height = shadowSize;
     this.keyLight.shadow.camera.near = 1.0;
@@ -343,8 +346,22 @@ export class SceneManager {
     this.controls.update();
   }
 
+  requestShadowUpdate(immediate = false) {
+    if (immediate) {
+      this.renderer.shadowMap.needsUpdate = true;
+      this._shadowCooldown = 0;
+      return;
+    }
+    if (this._shadowCooldown <= 0) {
+      this.renderer.shadowMap.needsUpdate = true;
+      this._shadowCooldown = 3; // Refresh shadow map at ~20Hz while organs animate, 0Hz when idle/orbiting!
+    }
+  }
+
   render() {
-    if (this.bloomEnabled) {
+    if (this._shadowCooldown > 0) this._shadowCooldown -= 1;
+    // Direct native hardware-antialiased render in Light Mode (skips 10-pass Bloom + HalfFloat FBO overhead!)
+    if (this.bloomEnabled && !this.isLightTheme) {
       this.composer.render();
     } else {
       this.renderer.render(this.scene, this.camera);
@@ -356,7 +373,7 @@ export class SceneManager {
     const height = this.container.clientHeight || window.innerHeight;
     const aspect = width / height;
     const isPortrait = aspect < 0.85;
-    const pixelRatio = Math.min(window.devicePixelRatio, width < 768 ? 1.5 : 2);
+    const pixelRatio = Math.min(window.devicePixelRatio, width < 768 ? 1.25 : 1.5);
 
     this.camera.fov = isPortrait ? 52 : 36;
     this.camera.aspect = aspect;

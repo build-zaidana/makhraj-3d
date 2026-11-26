@@ -20,8 +20,8 @@ import {
  *   4. Physical Pharyngeal Wall Constriction (middle constrictor contracts on ع/ح, superior on خ/غ!)
  */
 
-const PALATE_SEG_Z = 24;
-const PALATE_SEG_X = 16;
+const PALATE_SEG_Z = 18;
+const PALATE_SEG_X = 12;
 
 export class VocalTract {
   constructor(parentGroup, loadingManager = undefined) {
@@ -90,7 +90,7 @@ export class VocalTract {
           ior: 1.56,
           clippingPlanes: clipped ? [this.sagittalClipPlane] : [],
           clipShadows: clipped,
-          side: THREE.DoubleSide,
+          side: clipped ? THREE.DoubleSide : THREE.FrontSide,
         }),
         { color: '#f5dec0', intensity: 0.22, power: 2.8, wrap: 0.35 }
       );
@@ -128,25 +128,22 @@ export class VocalTract {
       { tint: '#bcae98', mixFactor: 0.55, darken: 0.68 }
     );
 
+    // Optimized lightweight StandardMaterial for the 85k-tri background pharyngeal constrictors
+    // (preserves rich striated normalMap + solid cut interior shading at ~3x lower GPU cost!)
     const makePharynxMuscle = () =>
       applySolidCutInterior(
-        applySubsurfaceScattering(
-          new THREE.MeshPhysicalMaterial({
-            map: muscleTex.map,
-            normalMap: muscleTex.normalMap,
-            normalScale: new THREE.Vector2(0.65, 0.65),
-            color: '#b85b6c',
-            emissive: new THREE.Color('#ffffff'),
-            emissiveIntensity: 0.0,
-            roughness: 0.44,
-            clearcoat: 0.38,
-            clearcoatRoughness: 0.32,
-            clippingPlanes: [this.sagittalClipPlane, this.bottomClipPlane],
-            clipShadows: true,
-            side: THREE.DoubleSide,
-          }),
-          { color: '#a82238', intensity: 0.36, power: 2.5, wrap: 0.4 }
-        ),
+        new THREE.MeshStandardMaterial({
+          map: muscleTex.map,
+          normalMap: muscleTex.normalMap,
+          normalScale: new THREE.Vector2(0.65, 0.65),
+          color: '#b85b6c',
+          emissive: new THREE.Color('#ffffff'),
+          emissiveIntensity: 0.0,
+          roughness: 0.46,
+          metalness: 0.0,
+          clippingPlanes: [this.sagittalClipPlane, this.bottomClipPlane],
+          side: THREE.DoubleSide,
+        }),
         { tint: '#7f3342', mixFactor: 0.44, darken: 0.65 }
       );
 
@@ -162,7 +159,7 @@ export class VocalTract {
         roughness: 0.32,
         clearcoat: 0.70,
         clearcoatRoughness: 0.22,
-        side: THREE.DoubleSide,
+        side: THREE.FrontSide,
       }),
       { color: '#c42b44', intensity: 0.45, power: 2.2, wrap: 0.45 }
     );
@@ -188,12 +185,11 @@ export class VocalTract {
       { tint: '#b25b6d', mixFactor: 0.50, darken: 0.74 }
     );
 
-    const nasalCavityMat = new THREE.MeshPhysicalMaterial({
+    const nasalCavityMat = new THREE.MeshStandardMaterial({
       color: '#b8b8b8',
       emissive: new THREE.Color('#ffffff'),
       emissiveIntensity: 0.05,
-      roughness: 0.22,
-      clearcoat: 0.58,
+      roughness: 0.32,
       transparent: true,
       opacity: 0.22,
       depthWrite: false,
@@ -201,21 +197,16 @@ export class VocalTract {
       side: THREE.DoubleSide,
     });
 
-    const nasalTurbinateMat = applySubsurfaceScattering(
-      new THREE.MeshPhysicalMaterial({
-        color: '#c98896',
-        roughness: 0.40,
-        clearcoat: 0.48,
-        clippingPlanes: [this.sagittalClipPlane],
-        side: THREE.DoubleSide,
-      }),
-      { color: '#b5344c', intensity: 0.32, power: 2.4, wrap: 0.4 }
-    );
+    const nasalTurbinateMat = new THREE.MeshStandardMaterial({
+      color: '#c98896',
+      roughness: 0.44,
+      clippingPlanes: [this.sagittalClipPlane],
+      side: THREE.DoubleSide,
+    });
 
-    const nasalCartilageMat = new THREE.MeshPhysicalMaterial({
+    const nasalCartilageMat = new THREE.MeshStandardMaterial({
       color: '#d4d4d4',
-      roughness: 0.32,
-      clearcoat: 0.42,
+      roughness: 0.38,
       transparent: true,
       opacity: 0.22,
       depthWrite: false,
@@ -223,10 +214,9 @@ export class VocalTract {
       side: THREE.DoubleSide,
     });
 
-    const larynxCartilageMat = new THREE.MeshPhysicalMaterial({
+    const larynxCartilageMat = new THREE.MeshStandardMaterial({
       color: '#d6d8de',
-      roughness: 0.32,
-      clearcoat: 0.44,
+      roughness: 0.36,
       transparent: true,
       opacity: 0.50,
       clippingPlanes: [this.sagittalClipPlane, this.bottomClipPlane],
@@ -234,12 +224,11 @@ export class VocalTract {
     });
 
     const tracheaMat = applySolidCutInterior(
-      new THREE.MeshPhysicalMaterial({
+      new THREE.MeshStandardMaterial({
         color: '#d8d9de',
         normalMap: boneTex.normalMap,
         normalScale: new THREE.Vector2(0.25, 0.25),
-        roughness: 0.38,
-        clearcoat: 0.34,
+        roughness: 0.42,
         clippingPlanes: [this.sagittalClipPlane, this.bottomClipPlane],
         side: THREE.DoubleSide,
       }),
@@ -253,18 +242,17 @@ export class VocalTract {
         emissiveIntensity: 0.04,
         roughness: 0.34,
         clearcoat: 0.56,
-        side: THREE.DoubleSide,
+        side: THREE.FrontSide,
       }),
       { color: '#c4324c', intensity: 0.42, power: 2.3, wrap: 0.45 }
     );
 
-    const vocalFoldsMat = new THREE.MeshPhysicalMaterial({
+    const vocalFoldsMat = new THREE.MeshStandardMaterial({
       color: '#f8f5f2',
       emissive: new THREE.Color('#ffffff'),
       emissiveIntensity: 0.14,
-      roughness: 0.20,
-      clearcoat: 0.78,
-      side: THREE.DoubleSide,
+      roughness: 0.26,
+      side: THREE.FrontSide,
     });
 
     this.materials = {
@@ -505,7 +493,11 @@ export class VocalTract {
           : ['misc', rawName];
         const part = partName.toLowerCase();
 
-        mesh.castShadow = true;
+        // Only hero foreground organs (teeth, gums, mandible) cast shadows — skips >130k background shadow tris!
+        const isShadowCaster =
+          (groupName === 'upper_dental' && !part.includes('palatine')) ||
+          groupName === 'lower_jaw';
+        mesh.castShadow = isShadowCaster;
         mesh.receiveShadow = true;
 
         // 1. Upper Dental Arch
@@ -657,6 +649,7 @@ export class VocalTract {
   updatePose(pose, letter, time = 0, audioLevel = 0, releaseFactor = 0) {
     // 1. Real TMJ mandibular opening
     const jawAngle = (pose.jawOpen + audioLevel * 0.10) * 0.25;
+    let moved = Math.abs(this.jawPivot.rotation.x - jawAngle) > 0.0005;
     this.jawPivot.rotation.x = jawAngle;
 
     // 2. Real Volumetric Soft Palate / Velum + Musculus Uvulae motion (Ghunnah ن / م)
@@ -665,6 +658,7 @@ export class VocalTract {
     if (Math.abs(this.velumOpenState - targetVelumOpen) > 0.002) {
       this.velumOpenState = THREE.MathUtils.lerp(this.velumOpenState, targetVelumOpen, 0.14);
       this._updatePalateVelum(this.velumOpenState);
+      moved = true;
     }
 
     if (this.uvulaPivot) {
@@ -770,24 +764,28 @@ export class VocalTract {
       }
 
       if (this._currentGlottisSpread === undefined) this._currentGlottisSpread = 1.0;
-      this._currentGlottisSpread = THREE.MathUtils.lerp(
+      const nextSpread = THREE.MathUtils.lerp(
         this._currentGlottisSpread,
         targetSpread,
         0.22
       );
 
-      const spread = this._currentGlottisSpread;
-      for (const entry of this.vocalFoldEntries) {
-        const attr = entry.mesh.geometry.attributes.position;
-        const arr = attr.array;
-        const base = entry.basePos;
-        for (let i = 0; i < arr.length; i += 3) {
-          // Posterior arytenoid end (Z ~ -0.34) opens/closes wider than fixed anterior thyroid commissure (Z ~ -0.14)
-          const postWeight = THREE.MathUtils.clamp((-0.14 - base[i + 2]) / 0.20, 0.15, 1.0);
-          arr[i] = base[i] * THREE.MathUtils.lerp(1.0, spread, postWeight);
+      // Dirty-check: skip 5,800-tri vertex updates when vocal folds are stationary!
+      if (Math.abs(nextSpread - this._currentGlottisSpread) > 0.0025) {
+        this._currentGlottisSpread = nextSpread;
+        const spread = nextSpread;
+        for (const entry of this.vocalFoldEntries) {
+          const attr = entry.mesh.geometry.attributes.position;
+          const arr = attr.array;
+          const base = entry.basePos;
+          for (let i = 0; i < arr.length; i += 3) {
+            const postWeight = THREE.MathUtils.clamp((-0.14 - base[i + 2]) / 0.20, 0.15, 1.0);
+            arr[i] = base[i] * THREE.MathUtils.lerp(1.0, spread, postWeight);
+          }
+          attr.needsUpdate = true;
         }
-        attr.needsUpdate = true;
       }
     }
+    return moved;
   }
 }
