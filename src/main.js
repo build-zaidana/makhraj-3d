@@ -10,6 +10,7 @@ import {
 import { SceneManager } from './scene/SceneManager.js';
 import { OuterHeadShell } from './scene/OuterHeadShell.js';
 import { TongueMesh } from './scene/TongueMesh.js';
+import { LipsMesh } from './scene/LipsMesh.js';
 import { VocalTract } from './scene/VocalTract.js';
 import { MakhrajHighlighter } from './scene/MakhrajHighlighter.js';
 import { AirflowParticles } from './scene/AirflowParticles.js';
@@ -88,7 +89,8 @@ const headGroup = sceneManager.headGroup;
 
 const outerHead = new OuterHeadShell(headGroup, sceneManager.renderer, loadingManager);
 const vocalTract = new VocalTract(headGroup, loadingManager);
-const tongue = new TongueMesh(headGroup);
+const tongue = new TongueMesh(headGroup, vocalTract.sagittalClipPlane);
+const lips = new LipsMesh(headGroup, vocalTract.sagittalClipPlane);
 const highlighter = new MakhrajHighlighter(headGroup);
 const airflow = new AirflowParticles(headGroup);
 const controller = new ArticulationController();
@@ -243,6 +245,7 @@ const valCutaway = document.getElementById('val-cutaway');
 const sliderOpacity = document.getElementById('slider-opacity');
 const valOpacity = document.getElementById('val-opacity');
 
+const chkLayerLips = document.getElementById('chk-layer-lips');
 const chkLayerJaw = document.getElementById('chk-layer-jaw');
 const chkLayerPharynx = document.getElementById('chk-layer-pharynx');
 const chkLayerNasal = document.getElementById('chk-layer-nasal');
@@ -783,7 +786,7 @@ function applyLetterTo3D(letter, { triggerPulse = false, concealLabels = false }
   const cat = MAKHRAJ_CATEGORIES[letter.makhraj];
   controller.setLetter(letter, triggerPulse);
   highlighter.setLetter(letter);
-  airflow.setConfig(letter.airflow);
+  airflow.setConfig(letter.airflow, letter.id);
   anatomicalLabels.setLetter(concealLabels ? null : letter);
   sceneManager.setMakhrajLight(
     new THREE.Vector3(...letter.focusPoint),
@@ -1285,6 +1288,10 @@ sliderOpacity.addEventListener('input', (e) => {
   store.updatePref('opacity', v);
 });
 
+chkLayerLips.addEventListener('change', (e) => {
+  lips.setVisible(e.target.checked);
+  store.updatePref('layerLips', e.target.checked);
+});
 chkLayerJaw.addEventListener('change', (e) => {
   vocalTract.setLayerVisible('jaw', e.target.checked);
   store.updatePref('layerJaw', e.target.checked);
@@ -1394,6 +1401,8 @@ function restoreSavedPreferences() {
   valOpacity.textContent = `${Math.round(savedPrefs.opacity * 100)}%`;
   outerHead.setOpacity(savedPrefs.opacity);
 
+  chkLayerLips.checked = savedPrefs.layerLips !== false;
+  lips.setVisible(chkLayerLips.checked);
   chkLayerJaw.checked = savedPrefs.layerJaw;
   vocalTract.setLayerVisible('jaw', savedPrefs.layerJaw);
   chkLayerPharynx.checked = savedPrefs.layerPharynx;
@@ -1431,6 +1440,7 @@ function animate() {
 
   const audioLevel = audioManager.getAudioLevel();
   const pose = controller.update(dt);
+  const releaseFactor = controller.getReleaseFactor();
 
   if (voiceRecorder.isRecording) {
     const micLvl = voiceRecorder.getInputLevel();
@@ -1438,11 +1448,12 @@ function animate() {
   }
 
   tongue.updatePose(pose, elapsed, audioLevel);
-  vocalTract.updatePose(pose, state.activeLetter, elapsed, audioLevel);
+  lips.updatePose(pose, elapsed, audioLevel);
+  vocalTract.updatePose(pose, state.activeLetter, elapsed, audioLevel, releaseFactor);
   outerHead.applyPose(pose, audioLevel);
   outerHead.update(elapsed);
   highlighter.update(dt, elapsed, sceneManager.camera, audioLevel);
-  airflow.update(dt, elapsed, controller.getSpeedMultiplier(), audioLevel);
+  airflow.update(dt, elapsed, controller.getSpeedMultiplier(), audioLevel, releaseFactor);
   sceneManager.update(dt);
   anatomicalLabels.update(sceneManager.camera, sceneManager.renderer);
 

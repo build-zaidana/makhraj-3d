@@ -5,15 +5,33 @@ import {
 } from '../shaders/airflowParticle.glsl.js';
 
 /**
- * AirflowParticles — Fine-Mist Aerodynamic Streamlines (Calibrated 1:1 to MRI Airway)
+ * AirflowParticles — Physics-Accurate Makhraj-Aware Aerodynamic Streamlines (320 Particles)
  *
- * 320 delicate micro-particles flowing smoothly through the exact registered MRI airway:
- *   Trachea -> Vocal Folds (Z=-0.24, Y=-0.74) -> Epiglottis (Z=-0.18, Y=-0.42)
- *   -> Oropharynx (Z=-0.24) -> Over Tongue -> Lips
- * and branching cleanly behind Musculus Uvulae into Nasopharynx & Al-Khaisyum for Ghunnah!
+ * Dynamically adapts airflow paths & obstructions to the true anatomy of all 29 Hijaiyah letters:
+ *  - Syiddah stops (ء ق ك ج ت د ط ب): air pools & pressurizes behind the exact contact point,
+ *    then bursts outward upon pronunciation release (with Qalqalah recoil or Hams puff!)
+ *  - Mim (م): oral airway seals completely behind closed lips while ~82% diverts up into Al-Khaisyum!
+ *  - Nun (ن): alveolar tip blocks oral center while ~58% flows upward through Al-Khaisyum (Ghunnah)!
+ *  - Syin (ش): wide Tafasyi dispersion filling the oral cavity laterally!
+ *  - Sin / Shad / Zay (س ص ز): razor-narrow high-velocity Safir jet through median groove!
+ *  - Dhad (ض): bilateral Istithalah pressure stream curving outward along inner upper molars (±X)!
  */
 
 const PARTICLE_COUNT = 320;
+
+// Exact stop parameter t along oralCurve for Syiddah / blocked-oral letters
+const OBSTRUCTION_T = {
+  hamzah: 0.19,
+  qaf: 0.49,
+  kaf: 0.57,
+  jim: 0.64,
+  ta: 0.77,
+  dal: 0.77,
+  tha: 0.77,
+  ba: 0.84,
+  mim: 0.76,
+  nun: 0.74,
+};
 
 const MODE_COLORS_DARK = {
   open: new THREE.Color('#e5e5e5'),
@@ -40,26 +58,24 @@ export class AirflowParticles {
     this.group = new THREE.Group();
     parentGroup.add(this.group);
 
-    // Exact 1:1 MRI registered oral airway centerline
     this.oralCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0, -0.96, -0.27), // Upper trachea
-      new THREE.Vector3(0, -0.74, -0.24), // Real vocal folds (Aqshal Halq)
-      new THREE.Vector3(0, -0.42, -0.20), // Past real epiglottis (Wasathul Halq)
-      new THREE.Vector3(0, 0.05, -0.24),  // Oropharynx (Adnal Halq)
-      new THREE.Vector3(0, 0.22, 0.16),   // Vault over tongue dorsum
-      new THREE.Vector3(0, 0.04, 0.68),   // Through anterior incisors
-      new THREE.Vector3(0, -0.02, 1.28),  // Fine outward breath dispersion
+      new THREE.Vector3(0, -0.96, -0.27), // t=0.00 Upper trachea
+      new THREE.Vector3(0, -0.74, -0.24), // t=0.17 Vocal folds (Aqshal Halq)
+      new THREE.Vector3(0, -0.42, -0.20), // t=0.33 Epiglottis (Wasathul Halq)
+      new THREE.Vector3(0, 0.05, -0.24),  // t=0.50 Oropharynx / Uvula (Adnal Halq & Qaf)
+      new THREE.Vector3(0, 0.22, 0.16),   // t=0.66 Mid palate (Jim / Syin / Ya)
+      new THREE.Vector3(0, 0.04, 0.68),   // t=0.82 Incisors & Lips
+      new THREE.Vector3(0, -0.02, 1.28),  // t=1.00 Outward breath dispersion
     ]);
 
-    // Exact 1:1 MRI registered nasal airway centerline (Al-Khaisyum!)
     this.nasalCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0, -0.92, -0.27), // Upper trachea
-      new THREE.Vector3(0, -0.45, -0.21), // Mid pharynx
-      new THREE.Vector3(0, 0.12, -0.26),  // Behind real musculus uvulae
-      new THREE.Vector3(0, 0.48, -0.18),  // Real nasopharynx
-      new THREE.Vector3(0, 0.56, 0.44),   // Real Al-Khaisyum nasal cavity
-      new THREE.Vector3(0, 0.36, 0.96),   // Nostrils exit
-      new THREE.Vector3(0, 0.24, 1.32),   // Fine outward nasal resonance
+      new THREE.Vector3(0, -0.92, -0.27),
+      new THREE.Vector3(0, -0.45, -0.21),
+      new THREE.Vector3(0, 0.12, -0.27),
+      new THREE.Vector3(0, 0.48, -0.18),
+      new THREE.Vector3(0, 0.56, 0.44),
+      new THREE.Vector3(0, 0.36, 0.96),
+      new THREE.Vector3(0, 0.24, 1.32),
     ]);
 
     this.positions = new Float32Array(PARTICLE_COUNT * 3);
@@ -74,7 +90,8 @@ export class AirflowParticles {
         speedJitter: 0.82 + (i % 9) * 0.045,
         radialAngle: (i * 2.39996) % (Math.PI * 2),
         radialDist: 0.012 + ((i * 13) % 10) * 0.0055,
-        isNasalSlot: i % 2 === 0,
+        slotRank: (i % 100) / 100, // smooth fraction for variable nasal routing (82% Mim, 58% Nun)
+        sideSign: i % 2 === 0 ? 1 : -1,
       });
     }
 
@@ -101,6 +118,7 @@ export class AirflowParticles {
     this.group.add(this.points);
 
     this.config = { mode: 'open', nasal: false, throatPulse: false, speed: 1.0 };
+    this.letterId = 'ta';
     this.visible = true;
     this.isLight = false;
     this._tmpPt = new THREE.Vector3();
@@ -113,8 +131,9 @@ export class AirflowParticles {
     this.material.needsUpdate = true;
   }
 
-  setConfig(airflowConfig) {
+  setConfig(airflowConfig, letterId = '') {
     this.config = airflowConfig || { mode: 'open', nasal: false, throatPulse: false, speed: 1.0 };
+    if (letterId) this.letterId = letterId;
   }
 
   setVisible(flag) {
@@ -122,49 +141,108 @@ export class AirflowParticles {
     this.points.visible = flag;
   }
 
-  update(dt, elapsedTime, speedMultiplier = 1.0, audioLevel = 0) {
+  update(dt, elapsedTime, speedMultiplier = 1.0, audioLevel = 0, releaseFactor = 0) {
     if (!this.visible) return;
 
     const palette = this.isLight ? MODE_COLORS_LIGHT : MODE_COLORS_DARK;
     const baseColor = palette[this.config.mode] || palette.open;
     const nasalColor = palette.ghunnah;
     const speed = (this.config.speed || 1.0) * 0.44 * speedMultiplier * (1.0 + audioLevel * 0.85);
+
+    const lid = this.letterId;
     const isQalqalah = this.config.mode === 'qalqalah';
     const isSafir = this.config.mode === 'safir';
+    const isTafasyi = lid === 'syin';
+    const isDhad = lid === 'dhad';
+    const isMim = lid === 'mim';
+    const isNun = lid === 'nun';
+
+    // Determine exact nasal split ratio
+    const nasalRatio = isMim ? 0.82 : isNun ? 0.58 : this.config.nasal ? 0.5 : 0.0;
+
+    // Obstruction barrier for Syiddah / blocked-oral letters (releases smoothly when speaking!)
+    const stopT = OBSTRUCTION_T[lid] || 1.0;
+    const isOralBlocked = stopT < 1.0 && !isMim && !isNun;
+    const releaseOpen = Math.max(releaseFactor, audioLevel * 1.4);
+    const activeMaxOralT =
+      isMim || isNun
+        ? stopT // On Mim/Nun oral cavity stays closed while air exits nose!
+        : isOralBlocked
+        ? THREE.MathUtils.lerp(stopT, 1.0, THREE.MathUtils.clamp(releaseOpen, 0, 1))
+        : 1.0;
 
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       const m = this.meta[i];
       m.t = (m.t + dt * speed * m.speedJitter) % 1.0;
 
-      const useNasal = this.config.nasal && m.isNasalSlot;
+      const useNasal = nasalRatio > 0 && m.slotRank < nasalRatio;
       const curve = useNasal ? this.nasalCurve : this.oralCurve;
-      curve.getPoint(m.t, this._tmpPt);
 
-      let spread = m.radialDist;
-      if (isSafir && m.t > 0.58 && m.t < 0.85) {
-        spread *= 0.28;
-      } else if (m.t > 0.82) {
-        spread *= 1.0 + (m.t - 0.82) * 7.5;
+      // Map oral particle progression cleanly up to activeMaxOralT (pools & swirls at barrier!)
+      let sampleT = m.t;
+      let pooled = false;
+      if (!useNasal && activeMaxOralT < 0.98) {
+        if (m.t > activeMaxOralT) {
+          // Pool & gently pressurize just behind the Makhraj contact barrier!
+          const excess = (m.t - activeMaxOralT) / Math.max(0.05, 1.0 - activeMaxOralT);
+          sampleT = activeMaxOralT - 0.04 * Math.sin(excess * Math.PI);
+          pooled = true;
+        }
       }
 
-      if (isQalqalah) {
-        this._tmpPt.z += Math.sin(elapsedTime * 7.5 + m.t * 8.0) * 0.03;
+      curve.getPoint(THREE.MathUtils.clamp(sampleT, 0, 1), this._tmpPt);
+
+      let spreadX = m.radialDist;
+      let spreadY = m.radialDist;
+
+      if (!useNasal) {
+        if (isSafir && sampleT > 0.56 && sampleT < 0.86) {
+          // Razor-tight laminar sibilant jet (Sin, Shad, Zay)
+          spreadX *= 0.24;
+          spreadY *= 0.24;
+        } else if (isTafasyi && sampleT > 0.55) {
+          // Wide Tafasyi air diffusion filling the mouth on Syin (ش)
+          const widen = 1.0 + (sampleT - 0.55) * 4.5;
+          spreadX *= widen * 1.45;
+          spreadY *= widen * 0.85;
+        } else if (isDhad && sampleT > 0.52 && sampleT < 0.86) {
+          // Bilateral Istithalah lateral stream pressing toward inner upper molars (±X)!
+          const latEnv = Math.sin(((sampleT - 0.52) / 0.34) * Math.PI);
+          this._tmpPt.x += m.sideSign * 0.23 * latEnv;
+          this._tmpPt.y -= 0.05 * latEnv;
+        } else if (pooled) {
+          // Pressurized gentle cushion right behind closed lips/tongue
+          spreadX *= 1.65;
+          spreadY *= 1.35;
+        } else if (sampleT > 0.82) {
+          const disp = 1.0 + (sampleT - 0.82) * 7.2;
+          spreadX *= disp;
+          spreadY *= disp;
+        }
+      } else if (sampleT > 0.84) {
+        const disp = 1.0 + (sampleT - 0.84) * 5.8;
+        spreadX *= disp;
+        spreadY *= disp;
       }
 
-      const swirl = elapsedTime * 1.4 + m.radialAngle + m.t * 3.8;
-      this.positions[i * 3] = this._tmpPt.x + Math.cos(swirl) * spread;
-      this.positions[i * 3 + 1] = this._tmpPt.y + Math.sin(swirl) * spread;
+      if (isQalqalah && !useNasal) {
+        this._tmpPt.z += Math.sin(elapsedTime * 8.0 + sampleT * 8.0) * (0.025 + releaseOpen * 0.02);
+      }
+
+      const swirl = elapsedTime * (pooled ? 2.8 : 1.45) + m.radialAngle + sampleT * 3.8;
+      this.positions[i * 3] = this._tmpPt.x + Math.cos(swirl) * spreadX;
+      this.positions[i * 3 + 1] = this._tmpPt.y + Math.sin(swirl) * spreadY;
       this.positions[i * 3 + 2] = this._tmpPt.z;
 
       const fadeIn = THREE.MathUtils.smoothstep(m.t, 0.0, 0.14);
       const fadeOut = 1.0 - THREE.MathUtils.smoothstep(m.t, 0.82, 1.0);
       const baseAlpha = this.isLight ? 0.68 + audioLevel * 0.30 : 0.44 + audioLevel * 0.36;
-      this.alphas[i] = fadeIn * fadeOut * baseAlpha;
+      const poolBoost = pooled ? 0.72 : 1.0;
+      this.alphas[i] = fadeIn * fadeOut * baseAlpha * poolBoost;
 
-      // Silky refined micro-particle sizing (slightly fuller in light mode for crisp readability)
       const themeScale = this.isLight ? 1.18 : 1.0;
       this.sizes[i] =
-        (useNasal ? 0.22 : isSafir ? 0.16 : 0.20) *
+        (useNasal ? 0.22 : isSafir ? 0.16 : isTafasyi ? 0.21 : 0.20) *
         themeScale *
         (0.75 + 0.45 * fadeOut) *
         (1.0 + audioLevel * 0.45);

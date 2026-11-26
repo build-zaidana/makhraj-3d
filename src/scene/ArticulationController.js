@@ -52,6 +52,7 @@ export class ArticulationController {
     this._pulseActive = false;
     this._pulseTime = 0;
     this._pulseDuration = 1.65;
+    this._releaseFactor = 0;
     this.slowMotion = false;
   }
 
@@ -66,6 +67,11 @@ export class ArticulationController {
   triggerPronunciation() {
     this._pulseActive = true;
     this._pulseTime = 0;
+    this._releaseFactor = 0;
+  }
+
+  getReleaseFactor() {
+    return this._releaseFactor;
   }
 
   setSlowMotion(enabled) {
@@ -89,23 +95,27 @@ export class ArticulationController {
       const p = this._pulseTime / this._pulseDuration;
 
       if (p < 0.20) {
-        // Brief preparatory opening from rest so student clearly sees the movement trajectory!
         emphasis = THREE.MathUtils.lerp(1.0, 0.25, p / 0.20);
+        this._releaseFactor = 0;
       } else if (p < 0.52) {
-        // Move cleanly into target Makhraj articulation contact without overshooting enamel!
         const t = (p - 0.20) / 0.32;
         const ease = 1 - Math.pow(1 - t, 3);
         emphasis = THREE.MathUtils.lerp(0.25, 1.03, ease);
+        this._releaseFactor = THREE.MathUtils.smoothstep(p, 0.42, 0.54);
       } else if (p < 0.82) {
-        // Hold peak contact pose cleanly for visual inspection
         emphasis = 1.02;
+        this._releaseFactor = 1.0;
       } else if (p < 1.0) {
         const t = (p - 0.82) / 0.18;
         emphasis = THREE.MathUtils.lerp(1.02, 1.0, t);
+        this._releaseFactor = 1.0 - t;
       } else {
         this._pulseActive = false;
+        this._releaseFactor = 0;
         emphasis = 1.0;
       }
+    } else {
+      this._releaseFactor = 0;
     }
 
     const lerpRate = Math.min(1.0, dt * 8.5 * speedMult);

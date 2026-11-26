@@ -26,6 +26,7 @@ const DEFAULT_DATA = {
     bloom: true,
     simpleHead: false,
     layerJaw: true,
+    layerLips: true,
     layerPharynx: true,
     layerNasal: true,
     layerTongue: true,

@@ -101,6 +101,46 @@ export function applySubsurfaceScattering(material, {
 }
 
 /**
+ * Shades interior back-faces (!gl_FrontFacing) exposed by the sagittal clipping plane
+ * with warm, matte solid cross-section tone so sliced bones, gums & lips look solid,
+ * never like hollow paper shells. Safely chains onto existing onBeforeCompile (e.g. SSS).
+ */
+export function applySolidCutInterior(material, {
+  tint = '#b9ac96',
+  mixFactor = 0.42,
+  darken = 0.68,
+} = {}) {
+  const prevCompile = material.onBeforeCompile;
+  const prevKey = material.customProgramCacheKey ? material.customProgramCacheKey() : 'base';
+  const cutCol = new THREE.Color(tint);
+
+  material.onBeforeCompile = (shader, renderer) => {
+    if (prevCompile) prevCompile(shader, renderer);
+    shader.uniforms.uCutInteriorCol = { value: cutCol };
+    shader.uniforms.uCutInteriorMix = { value: mixFactor };
+    shader.uniforms.uCutInteriorDark = { value: darken };
+
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+        uniform vec3 uCutInteriorCol;
+        uniform float uCutInteriorMix;
+        uniform float uCutInteriorDark;`
+      )
+      .replace(
+        '#include <dithering_fragment>',
+        `if (!gl_FrontFacing) {
+          gl_FragColor.rgb = mix(gl_FragColor.rgb * uCutInteriorDark, uCutInteriorCol, uCutInteriorMix);
+        }
+        #include <dithering_fragment>`
+      );
+  };
+  material.customProgramCacheKey = () => `${prevKey}_cut_${tint}_${mixFactor}_${darken}`;
+  return material;
+}
+
+/**
  * Organic 512x512 tongue PBR textures (median sulcus, papillae micro-relief, moist sheen).
  */
 export function createTongueTextures() {
@@ -142,13 +182,22 @@ export function createTongueTextures() {
   hCtx.fillStyle = sulcusGrad;
   hCtx.fillRect(size * 0.45, 0, size * 0.10, size);
 
-  // V-shaped circumvallate papillae near posterior third
+  // V-shaped circumvallate papillae near posterior third (subtle diffuse + normal relief)
   for (let i = -4; i <= 4; i++) {
     const px = size * 0.5 + i * 32;
     const py = size * 0.30 + Math.abs(i) * 14;
+    diffCtx.beginPath();
+    diffCtx.arc(px, py, 6.2, 0, Math.PI * 2);
+    diffCtx.fillStyle = 'rgba(130, 42, 58, 0.20)';
+    diffCtx.fill();
+    diffCtx.beginPath();
+    diffCtx.arc(px, py, 4.2, 0, Math.PI * 2);
+    diffCtx.fillStyle = 'rgba(232, 165, 178, 0.24)';
+    diffCtx.fill();
+
     hCtx.beginPath();
     hCtx.arc(px, py, 6.5, 0, Math.PI * 2);
-    hCtx.fillStyle = 'rgba(225,225,225,0.48)';
+    hCtx.fillStyle = 'rgba(225,225,225,0.52)';
     hCtx.fill();
   }
 

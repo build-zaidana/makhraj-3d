@@ -61,10 +61,11 @@ export class SceneManager {
       this.camera.position.copy(CAMERA_PRESETS.side.pos);
     }
 
-    // WebGL2 Renderer with soft shadows and ACES filmic tone mapping
+    // WebGL2 Renderer with soft shadows, stencil buffer (for solid cut caps) & ACES filmic tone mapping
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: false,
+      stencil: true,
       powerPreference: 'high-performance',
     });
     this.renderer.setSize(width, height);
@@ -123,6 +124,7 @@ export class SceneManager {
       Math.floor(height * pixelRatio),
       {
         type: THREE.HalfFloatType,
+        stencilBuffer: true,
         samples: 4, // Hardware MSAA inside EffectComposer for razor-sharp edges!
       }
     );
